@@ -1,0 +1,24 @@
+# Example configuration for uos-openldap-exporter
+
+ldap:
+  server: "ldap://localhost:389"
+  bind_dn: "cn=admin,dc=example,dc=com"
+  bind_password: "secret"
+  timeout: 10s
+  start_tls: false
+  insecure_skip_verify: false
+
+web:
+  listen_address: ":9330"
+  metrics_path: "/metrics"
+
+log:
+  level: "info"
+
+custom_searches:
+  - name: "user_count"
+    base_dn: "ou=People,dc=example,dc=com"
+    filter: "(objectClass=inetOrgPerson)"
+  - name: "group_count"
+    base_dn: "ou=Groups,dc=example,dc=com"
+    filter: "(objectClass=groupOfNames)"
