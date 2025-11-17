@@ -3,10 +3,9 @@ package collector
 import (
 	"fmt"
 	"net"
-	"time"
 
-	"github.com/go-ldap/ldap/v3"
 	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
+	"github.com/go-ldap/ldap/v3"
 	"github.com/sirupsen/logrus"
 )
 
@@ -84,7 +83,7 @@ func (c *LDAPClient) SearchCount(baseDN, filter string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	
+
 	return len(res.Entries), nil
 }
 
@@ -106,11 +105,11 @@ func (c *LDAPClient) SearchMonitor(dn, attr string) (string, error) {
 	if err != nil || len(res.Entries) == 0 {
 		return "", err
 	}
-	
+
 	vals := res.Entries[0].GetAttributeValues(attr)
 	if len(vals) == 0 {
 		return "", fmt.Errorf("attribute %s not found in %s", attr, dn)
 	}
-	
+
 	return vals[0], nil
 }

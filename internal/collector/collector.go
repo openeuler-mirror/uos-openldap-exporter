@@ -3,8 +3,8 @@ package collector
 import (
 	"strconv"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 )
 

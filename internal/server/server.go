@@ -3,9 +3,9 @@ package server
 import (
 	"net/http"
 
+	"gitee.com/openeuler/uos-openldap-exporter/internal/collector"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"gitee.com/openeuler/uos-openldap-exporter/internal/collector"
 	"github.com/sirupsen/logrus"
 )
 
