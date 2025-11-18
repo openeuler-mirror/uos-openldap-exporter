@@ -163,7 +163,7 @@ func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
 	ops := []string{"Bind", "Unbind", "Search", "Modify", "Add", "Delete"}
 	for _, op := range ops {
 		dn := "cn=" + op + ",cn=Operations,cn=Monitor"
-		
+
 		// Initiated operations
 		if val, err := client.SearchMonitor(dn, "monitorOpInitiated"); err == nil {
 			if n, err := strconv.ParseFloat(val, 64); err == nil {
@@ -171,7 +171,7 @@ func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
 				ch <- prometheus.MustNewConstMetric(monitorOpsInitDesc, prometheus.CounterValue, n, opLabels["server"], opLabels["operation"])
 			}
 		}
-		
+
 		// Completed operations
 		if val, err := client.SearchMonitor(dn, "monitorOpCompleted"); err == nil {
 			if n, err := strconv.ParseFloat(val, 64); err == nil {
@@ -179,7 +179,7 @@ func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
 				ch <- prometheus.MustNewConstMetric(monitorOpsCompletedDesc, prometheus.CounterValue, n, opLabels["server"], opLabels["operation"])
 			}
 		}
-		
+
 		// Waiting operations
 		if val, err := client.SearchMonitor(dn, "monitorOpWaiting"); err == nil {
 			if n, err := strconv.ParseFloat(val, 64); err == nil {
