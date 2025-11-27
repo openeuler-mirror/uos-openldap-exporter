@@ -2,6 +2,8 @@ package collector
 
 import (
 	"fmt"
+	"net"
+	"time"
 
 	"github.com/go-ldap/ldap/v3"
 	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
@@ -21,8 +23,13 @@ func NewLDAPClient(cfg *config.LDAPConfig, logger *logrus.Logger) (*LDAPClient, 
 		return nil, fmt.Errorf("ldap.server is required")
 	}
 
+	// Create a dialer with timeout
+	dialer := &net.Dialer{
+		Timeout: cfg.Timeout,
+	}
+
 	// Establish connection
-	conn, err := ldap.DialURL(cfg.Server, ldap.DialWithTimeout(cfg.Timeout))
+	conn, err := ldap.DialURL(cfg.Server, ldap.DialWithDialer(dialer))
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial LDAP: %w", err)
 	}
