@@ -23,15 +23,50 @@ var (
 		"Total number of entries in the directory.",
 		[]string{"server"}, nil)
 
-	monitorConnDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "monitor", "connections_total"),
-		"Current number of connections.",
+	monitorCurrentConnDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "monitor", "current_connections"),
+		"Current number of connected clients.",
+		[]string{"server"}, nil)
+
+	monitorTotalConnDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "monitor", "total_connections"),
+		"Total number of connections since server startup.",
+		[]string{"server"}, nil)
+
+	monitorMaxConnDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "monitor", "max_connections"),
+		"Maximum number of connections allowed by server configuration.",
+		[]string{"server"}, nil)
+
+	monitorActiveOpsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "monitor", "active_operations"),
+		"Number of currently active operations.",
+		[]string{"server"}, nil)
+
+	monitorPendingOpsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "monitor", "pending_operations"),
+		"Number of pending operations.",
 		[]string{"server"}, nil)
 
 	monitorOpsInitDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "monitor", "operations_initiated_total"),
 		"Number of initiated operations.",
 		[]string{"server", "operation"}, nil)
+
+	monitorOpsCompletedDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "monitor", "operations_completed_total"),
+		"Number of completed operations.",
+		[]string{"server", "operation"}, nil)
+
+	monitorOpsWaitingDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "monitor", "operations_waiting"),
+		"Number of waiting operations.",
+		[]string{"server", "operation"}, nil)
+
+	monitorStatDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "monitor", "statistics"),
+		"Various statistics.",
+		[]string{"server", "statistic"}, nil)
 
 	customSearchDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "custom_search_result_count"),
@@ -57,8 +92,15 @@ func New(cfg *config.Config, logger *logrus.Logger) *OpenLDAPCollector {
 func (c *OpenLDAPCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- upDesc
 	ch <- entriesTotalDesc
-	ch <- monitorConnDesc
+	ch <- monitorCurrentConnDesc
+	ch <- monitorTotalConnDesc
+	ch <- monitorMaxConnDesc
+	ch <- monitorActiveOpsDesc
+	ch <- monitorPendingOpsDesc
 	ch <- monitorOpsInitDesc
+	ch <- monitorOpsCompletedDesc
+	ch <- monitorOpsWaitingDesc
+	ch <- monitorStatDesc
 	ch <- customSearchDesc
 }
 
@@ -85,21 +127,76 @@ func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
 		c.logger.Warnf("Failed to get total entries: %v", err)
 	}
 
-	// Monitor: connections
-	if val, err := client.SearchMonitor("cn=Connections,cn=Monitor", "monitorCounter"); err == nil {
-		if n, err := strconv.ParseFloat(val, 64); err == nil {
-			ch <- prometheus.MustNewConstMetric(monitorConnDesc, prometheus.GaugeValue, n, labels["server"])
+	// Monitor: connections details
+	connDetails := []struct {
+		dn   string
+		attr string
+		desc *prometheus.Desc
+	}{
+		{"cn=Current,cn=Connections,cn=Monitor", "monitorCounter", monitorCurrentConnDesc},
+		{"cn=Total,cn=Connections,cn=Monitor", "monitorCounter", monitorTotalConnDesc},
+		{"cn=Max File Descriptors,cn=Connections,cn=Monitor", "monitorCounter", monitorMaxConnDesc},
+	}
+
+	for _, detail := range connDetails {
+		if val, err := client.SearchMonitor(detail.dn, detail.attr); err == nil {
+			if n, err := strconv.ParseFloat(val, 64); err == nil {
+				ch <- prometheus.MustNewConstMetric(detail.desc, prometheus.GaugeValue, n, labels["server"])
+			}
 		}
 	}
 
-	// Monitor: operations (initiated)
+	// Monitor: operations details
+	if val, err := client.SearchMonitor("cn=Operations,cn=Monitor", "monitorOpActive"); err == nil {
+		if n, err := strconv.ParseFloat(val, 64); err == nil {
+			ch <- prometheus.MustNewConstMetric(monitorActiveOpsDesc, prometheus.GaugeValue, n, labels["server"])
+		}
+	}
+
+	if val, err := client.SearchMonitor("cn=Operations,cn=Monitor", "monitorOpPending"); err == nil {
+		if n, err := strconv.ParseFloat(val, 64); err == nil {
+			ch <- prometheus.MustNewConstMetric(monitorPendingOpsDesc, prometheus.GaugeValue, n, labels["server"])
+		}
+	}
+
+	// Monitor: operations (initiated, completed, waiting)
 	ops := []string{"Bind", "Unbind", "Search", "Modify", "Add", "Delete"}
 	for _, op := range ops {
 		dn := "cn=" + op + ",cn=Operations,cn=Monitor"
+		
+		// Initiated operations
 		if val, err := client.SearchMonitor(dn, "monitorOpInitiated"); err == nil {
 			if n, err := strconv.ParseFloat(val, 64); err == nil {
 				opLabels := prometheus.Labels{"server": labels["server"], "operation": op}
 				ch <- prometheus.MustNewConstMetric(monitorOpsInitDesc, prometheus.CounterValue, n, opLabels["server"], opLabels["operation"])
+			}
+		}
+		
+		// Completed operations
+		if val, err := client.SearchMonitor(dn, "monitorOpCompleted"); err == nil {
+			if n, err := strconv.ParseFloat(val, 64); err == nil {
+				opLabels := prometheus.Labels{"server": labels["server"], "operation": op}
+				ch <- prometheus.MustNewConstMetric(monitorOpsCompletedDesc, prometheus.CounterValue, n, opLabels["server"], opLabels["operation"])
+			}
+		}
+		
+		// Waiting operations
+		if val, err := client.SearchMonitor(dn, "monitorOpWaiting"); err == nil {
+			if n, err := strconv.ParseFloat(val, 64); err == nil {
+				opLabels := prometheus.Labels{"server": labels["server"], "operation": op}
+				ch <- prometheus.MustNewConstMetric(monitorOpsWaitingDesc, prometheus.GaugeValue, n, opLabels["server"], opLabels["operation"])
+			}
+		}
+	}
+
+	// Monitor: statistics
+	stats := []string{"Bytes", "Entries", "Referrals", "Operations"}
+	for _, stat := range stats {
+		dn := "cn=" + stat + ",cn=Statistics,cn=Monitor"
+		if val, err := client.SearchMonitor(dn, "monitorCounter"); err == nil {
+			if n, err := strconv.ParseFloat(val, 64); err == nil {
+				statLabels := prometheus.Labels{"server": labels["server"], "statistic": stat}
+				ch <- prometheus.MustNewConstMetric(monitorStatDesc, prometheus.CounterValue, n, statLabels["server"], statLabels["statistic"])
 			}
 		}
 	}
