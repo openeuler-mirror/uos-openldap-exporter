@@ -10,10 +10,10 @@ import (
 
 // Config holds the configuration for the OpenLDAP Exporter
 type Config struct {
-	Web            WebConfig        `mapstructure:"web"`
-	LDAP           LDAPConfig       `mapstructure:"ldap"`
-	Log            LogConfig        `mapstructure:"log"`
-	CustomSearches []CustomSearch   `mapstructure:"custom_searches"`
+	Web            WebConfig      `mapstructure:"web"`
+	LDAP           LDAPConfig     `mapstructure:"ldap"`
+	Log            LogConfig      `mapstructure:"log"`
+	CustomSearches []CustomSearch `mapstructure:"custom_searches"`
 }
 
 // WebConfig holds the web server configuration
