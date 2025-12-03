@@ -56,11 +56,21 @@ func init() {
 	rootCmd.Flags().String("ldap.bind-password", "", "Bind password")
 
 	// Bind viper flags
-	viper.BindPFlag("web.listen_address", rootCmd.Flags().Lookup("web.listen-address"))
-	viper.BindPFlag("web.metrics_path", rootCmd.Flags().Lookup("web.metrics-path"))
-	viper.BindPFlag("ldap.server", rootCmd.Flags().Lookup("ldap.server"))
-	viper.BindPFlag("ldap.bind_dn", rootCmd.Flags().Lookup("ldap.bind-dn"))
-	viper.BindPFlag("ldap.bind_password", rootCmd.Flags().Lookup("ldap.bind-password"))
+	if err := viper.BindPFlag("web.listen_address", rootCmd.Flags().Lookup("web.listen-address")); err != nil {
+		panic(fmt.Errorf("failed to bind web.listen_address flag: %w", err))
+	}
+	if err := viper.BindPFlag("web.metrics_path", rootCmd.Flags().Lookup("web.metrics-path")); err != nil {
+		panic(fmt.Errorf("failed to bind web.metrics_path flag: %w", err))
+	}
+	if err := viper.BindPFlag("ldap.server", rootCmd.Flags().Lookup("ldap.server")); err != nil {
+		panic(fmt.Errorf("failed to bind ldap.server flag: %w", err))
+	}
+	if err := viper.BindPFlag("ldap.bind_dn", rootCmd.Flags().Lookup("ldap.bind-dn")); err != nil {
+		panic(fmt.Errorf("failed to bind ldap.bind_dn flag: %w", err))
+	}
+	if err := viper.BindPFlag("ldap.bind_password", rootCmd.Flags().Lookup("ldap.bind-password")); err != nil {
+		panic(fmt.Errorf("failed to bind ldap.bind_password flag: %w", err))
+	}
 }
 
 // initConfig reads in config file and ENV variables if set.

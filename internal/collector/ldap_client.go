@@ -37,7 +37,7 @@ func NewLDAPClient(cfg *config.LDAPConfig, logger *logrus.Logger) (*LDAPClient, 
 	if cfg.StartTLS {
 		err = conn.StartTLS(cfg.TLSConfig)
 		if err != nil {
-			conn.Close()
+			_ = conn.Close()
 			return nil, fmt.Errorf("failed to start TLS: %w", err)
 		}
 	}
@@ -46,7 +46,7 @@ func NewLDAPClient(cfg *config.LDAPConfig, logger *logrus.Logger) (*LDAPClient, 
 	if cfg.BindDN != "" {
 		err = conn.Bind(cfg.BindDN, cfg.BindPassword)
 		if err != nil {
-			conn.Close()
+			_ = conn.Close()
 			return nil, fmt.Errorf("bind failed: %w", err)
 		}
 	}
@@ -61,7 +61,7 @@ func NewLDAPClient(cfg *config.LDAPConfig, logger *logrus.Logger) (*LDAPClient, 
 // Close closes the LDAP connection
 func (c *LDAPClient) Close() {
 	if c.conn != nil {
-		c.conn.Close()
+		_ = c.conn.Close()
 	}
 }
 
