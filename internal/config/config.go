@@ -73,9 +73,15 @@ func Load(configFile string) *Config {
 
 	// Build TLS configuration
 	if cfg.LDAP.InsecureSkipVerify {
-		cfg.LDAP.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+		// #nosec G402 InsecureSkipVerify is intentionally configured by user to skip certificate verification
+		cfg.LDAP.TLSConfig = &tls.Config{
+			InsecureSkipVerify: true,
+			MinVersion:         tls.VersionTLS12,
+		}
 	} else {
-		cfg.LDAP.TLSConfig = &tls.Config{}
+		cfg.LDAP.TLSConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
 	}
 
 	return &cfg
