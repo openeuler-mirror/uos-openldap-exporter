@@ -46,7 +46,7 @@ func (s *Server) Run() error {
 	})
 
 	s.logger.Infof("Starting server on %s", s.addr)
-	
+
 	// Create server with timeouts to prevent potential Slowloris attacks
 	server := &http.Server{
 		Addr:         s.addr,
