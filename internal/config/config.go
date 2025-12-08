@@ -3,6 +3,7 @@ package config
 import (
 	"crypto/tls"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -14,6 +15,12 @@ type Config struct {
 	LDAP           LDAPConfig     `mapstructure:"ldap"`
 	Log            LogConfig      `mapstructure:"log"`
 	CustomSearches []CustomSearch `mapstructure:"custom_searches"`
+}
+
+func NewConfig() *Config {
+	return &Config{
+		CustomSearches: []CustomSearch{},
+	}
 }
 
 // WebConfig holds the web server configuration
@@ -35,8 +42,8 @@ type LDAPConfig struct {
 
 // LogConfig holds the logging configuration
 type LogConfig struct {
-	Level string `mapstructure:"level"`
-	Format string `mapstructure:"format"`  // 添加日志格式字段，支持json或text
+	Level  string `mapstructure:"level"`
+	Format string `mapstructure:"format"` // 添加日志格式字段，支持json或text
 }
 
 // CustomSearch defines a custom LDAP search
@@ -51,12 +58,21 @@ func Load(configFile string) *Config {
 	// Set default values
 	viper.SetDefault("web.listen_address", ":9330")
 	viper.SetDefault("web.metrics_path", "/metrics")
+	viper.SetDefault("ldap.server", "")
+	viper.SetDefault("ldap.bind_dn", "")
+	viper.SetDefault("ldap.bind_password", "")
 	viper.SetDefault("ldap.timeout", 10*time.Second)
+	viper.SetDefault("ldap.start_tls", false)
+	viper.SetDefault("ldap.insecure_skip_verify", false)
 	viper.SetDefault("log.level", "info")
-	viper.SetDefault("log.format", "text")  // 设置日志格式默认值为text
+	viper.SetDefault("log.format", "text") // 设置日志格式默认值为text
 
 	// Set environment variable prefix
 	viper.SetEnvPrefix("OPENLDAP_EXPORTER")
+	
+	// 设置环境变量键名替换规则，将点(.)替换为下划线(_)
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	
 	viper.AutomaticEnv()
 
 	// Set config file if provided
@@ -71,6 +87,11 @@ func Load(configFile string) *Config {
 	var cfg Config
 	if err := viper.Unmarshal(&cfg); err != nil {
 		panic(fmt.Errorf("failed to parse config: %w", err))
+	}
+	
+	// 初始化CustomSearches为空切片而不是nil
+	if cfg.CustomSearches == nil {
+		cfg.CustomSearches = []CustomSearch{}
 	}
 
 	// Build TLS configuration

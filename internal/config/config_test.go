@@ -92,7 +92,7 @@ func TestLoad_TLSConfig(t *testing.T) {
 }
 
 func TestConfig_Structure(t *testing.T) {
-	cfg := &Config{}
+	cfg := NewConfig()
 	
 	// 确保所有嵌套结构都已正确初始化
 	if cfg.CustomSearches == nil {
