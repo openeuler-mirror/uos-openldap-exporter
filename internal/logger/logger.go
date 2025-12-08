@@ -4,8 +4,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// New creates a new logger instance with the specified log level
-func New(levelStr string) *logrus.Logger {
+// New creates a new logger instance with the specified log level and format
+func New(levelStr string, format string) *logrus.Logger {
 	log := logrus.New()
 
 	level, err := logrus.ParseLevel(levelStr)
@@ -14,9 +14,17 @@ func New(levelStr string) *logrus.Logger {
 	}
 
 	log.SetLevel(level)
-	log.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp: true,
-	})
+	
+	// 根据配置设置日志格式
+	if format == "json" {
+		log.SetFormatter(&logrus.JSONFormatter{
+			TimestampFormat: "2006-01-02T15:04:05.000Z07:00",
+		})
+	} else {
+		log.SetFormatter(&logrus.TextFormatter{
+			FullTimestamp: true,
+		})
+	}
 
 	return log
 }
