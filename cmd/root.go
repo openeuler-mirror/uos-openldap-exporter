@@ -25,7 +25,7 @@ var rootCmd = &cobra.Command{
 and exposes them via HTTP for Prometheus to scrape.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := config.Load(cfgFile)
-		log := logger.New(cfg.Log.Level)
+		log := logger.New(cfg.Log.Level, cfg.Log.Format)
 		coll := collector.New(cfg, log)
 		srv := server.New(cfg.Web.ListenAddress, cfg.Web.MetricsPath, coll, log)
 		return srv.Run()

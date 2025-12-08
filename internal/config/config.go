@@ -36,6 +36,7 @@ type LDAPConfig struct {
 // LogConfig holds the logging configuration
 type LogConfig struct {
 	Level string `mapstructure:"level"`
+	Format string `mapstructure:"format"`  // 添加日志格式字段，支持json或text
 }
 
 // CustomSearch defines a custom LDAP search
@@ -52,6 +53,7 @@ func Load(configFile string) *Config {
 	viper.SetDefault("web.metrics_path", "/metrics")
 	viper.SetDefault("ldap.timeout", 10*time.Second)
 	viper.SetDefault("log.level", "info")
+	viper.SetDefault("log.format", "text")  // 设置日志格式默认值为text
 
 	// Set environment variable prefix
 	viper.SetEnvPrefix("OPENLDAP_EXPORTER")
