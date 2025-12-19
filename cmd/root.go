@@ -34,10 +34,8 @@ and exposes them via HTTP for Prometheus to scrape.`,
 		}
 		
 		// Validate configuration
-		if validationErrs := cfg.Validate(); len(validationErrs) > 0 {
-			for _, validationErr := range validationErrs {
-				fmt.Fprintf(os.Stderr, "Configuration error: %v\n", validationErr)
-			}
+		if validationErr := cfg.Validate(); validationErr != nil {
+			fmt.Fprintf(os.Stderr, "Configuration error: %v\n", validationErr)
 			return fmt.Errorf("invalid configuration")
 		}
 		
