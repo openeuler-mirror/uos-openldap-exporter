@@ -70,7 +70,7 @@ func TestLoad_EnvironmentVariables(t *testing.T) {
 
 func TestLoad_TLSConfig(t *testing.T) {
 	cfg := Load("")
-	
+
 	// 默认情况下应该有TLS配置且InsecureSkipVerify应为false
 	if cfg.LDAP.TLSConfig == nil {
 		t.Error("Expected TLSConfig to be initialized")
@@ -93,7 +93,7 @@ func TestLoad_TLSConfig(t *testing.T) {
 
 func TestConfig_Structure(t *testing.T) {
 	cfg := NewConfig()
-	
+
 	// 确保所有嵌套结构都已正确初始化
 	if cfg.CustomSearches == nil {
 		t.Error("Expected CustomSearches to be initialized as empty slice, not nil")

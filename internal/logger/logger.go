@@ -14,7 +14,7 @@ func New(levelStr string, format string) *logrus.Logger {
 	}
 
 	log.SetLevel(level)
-	
+
 	// 根据配置设置日志格式
 	if format == "json" {
 		log.SetFormatter(&logrus.JSONFormatter{
