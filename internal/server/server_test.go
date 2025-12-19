@@ -113,11 +113,12 @@ func TestHandleHealthCheckSuccess(t *testing.T) {
 	
 	coll := collector.New(cfg, logger)
 	
-	// 使用反射来设置未导出字段 ldapClientCreator
-	collector.SetLDAPClientCreatorForTest(coll, func(cfg *config.LDAPConfig, logger *logrus.Logger) (collector.LDAPClientInterface, error) {
-		mockClient := new(MockLDAPClient)
-		mockClient.On("Close").Return()
-		mockClient.On("CheckHealth").Return(true, "")
+	// 使用测试辅助函数设置ldapClientCreator
+	mockClient := new(MockLDAPClient)
+	mockClient.On("Close").Return()
+	mockClient.On("CheckHealth").Return(true, "")
+	
+	coll.SetLDAPClientCreatorForTest(func(cfg *config.LDAPConfig, logger *logrus.Logger) (collector.LDAPClientInterface, error) {
 		return mockClient, nil
 	})
 	
@@ -156,8 +157,8 @@ func TestHandleHealthCheckFailure(t *testing.T) {
 	
 	coll := collector.New(cfg, logger)
 	
-	// 使用反射来设置未导出字段 ldapClientCreator
-	collector.SetLDAPClientCreatorForTest(coll, func(cfg *config.LDAPConfig, logger *logrus.Logger) (collector.LDAPClientInterface, error) {
+	// 使用测试辅助函数设置ldapClientCreator
+	coll.SetLDAPClientCreatorForTest(func(cfg *config.LDAPConfig, logger *logrus.Logger) (collector.LDAPClientInterface, error) {
 		return nil, errors.New("connection failed")
 	})
 	
