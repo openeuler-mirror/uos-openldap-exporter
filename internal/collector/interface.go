@@ -10,4 +10,7 @@ type LDAPClientInterface interface {
 	
 	// SearchMonitor 获取cn=Monitor下指定属性的值
 	SearchMonitor(dn, attr string) (string, error)
+	
+	// CheckHealth 执行健康检查
+	CheckHealth() (bool, string)
 }
