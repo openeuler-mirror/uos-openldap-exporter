@@ -32,7 +32,7 @@ and exposes them via HTTP for Prometheus to scrape.`,
 		if err != nil {
 			return fmt.Errorf("failed to load configuration: %w", err)
 		}
-		
+
 		log := logger.NewWithConfig(logger.Config{
 			Level:      cfg.Log.Level,
 			Format:     cfg.Log.Format,
@@ -107,7 +107,7 @@ func init() {
 
 	// Bind viper flags
 	bindErrs := []error{}
-	
+
 	if err := viper.BindPFlag("web.listen_address", rootCmd.Flags().Lookup("web.listen-address")); err != nil {
 		bindErrs = append(bindErrs, fmt.Errorf("failed to bind web.listen_address flag: %w", err))
 	}
@@ -156,7 +156,7 @@ func init() {
 	if err := viper.BindPFlag("log.compress", rootCmd.Flags().Lookup("log.compress")); err != nil {
 		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.compress flag: %w", err))
 	}
-	
+
 	// Handle binding errors gracefully
 	if len(bindErrs) > 0 {
 		for _, err := range bindErrs {
