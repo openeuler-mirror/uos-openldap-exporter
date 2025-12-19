@@ -2,7 +2,17 @@
 #
 # This file demonstrates all available configuration options.
 # You can also configure the exporter via command-line flags or environment variables.
-# See README.md for more details.
+#
+# Configuration precedence (highest to lowest):
+# 1. Command-line flags
+# 2. Environment variables 
+# 3. This config file
+# 4. Built-in defaults
+#
+# Environment variables use the format: OPENLDAP_EXPORTER_<SECTION>_<KEY>
+# with dots converted to underscores. For example:
+#   ldap.server -> OPENLDAP_EXPORTER_LDAP_SERVER
+#   web.listen_address -> OPENLDAP_EXPORTER_WEB_LISTEN_ADDRESS
 
 ldap:
   # LDAP server address (required)
