@@ -42,8 +42,14 @@ type LDAPConfig struct {
 
 // LogConfig holds the logging configuration
 type LogConfig struct {
-	Level  string `mapstructure:"level"`
-	Format string `mapstructure:"format"` // 添加日志格式字段，支持json或text
+	Level      string `mapstructure:"level"`
+	Format     string `mapstructure:"format"`
+	Output     string `mapstructure:"output"`      // 日志输出位置，默认 stdout
+	MaxSize    int    `mapstructure:"max_size"`    // 每个日志文件最大大小(MB)，默认100
+	MaxAge     int    `mapstructure:"max_age"`     // 保留旧日志文件的最大天数，默认30
+	MaxBackups int    `mapstructure:"max_backups"` // 保留旧日志文件的最大个数，默认3
+	LocalTime  bool   `mapstructure:"local_time"`  // 是否使用本地时间，默认false(UTC)
+	Compress   bool   `mapstructure:"compress"`    // 是否压缩轮转的日志文件，默认false
 }
 
 // CustomSearch defines a custom LDAP search
@@ -125,7 +131,13 @@ func Load(configFile string) (*Config, error) {
 	viper.SetDefault("ldap.start_tls", false)
 	viper.SetDefault("ldap.insecure_skip_verify", false)
 	viper.SetDefault("log.level", "info")
-	viper.SetDefault("log.format", "text") // 设置日志格式默认值为text
+	viper.SetDefault("log.format", "text")
+	viper.SetDefault("log.output", "stdout")
+	viper.SetDefault("log.max_size", 100)
+	viper.SetDefault("log.max_age", 30)
+	viper.SetDefault("log.max_backups", 3)
+	viper.SetDefault("log.local_time", false)
+	viper.SetDefault("log.compress", false)
 
 	// Set environment variable prefix
 	viper.SetEnvPrefix("OPENLDAP_EXPORTER")
