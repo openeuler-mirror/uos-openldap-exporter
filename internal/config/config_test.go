@@ -12,6 +12,10 @@ func TestLoad_DefaultValues(t *testing.T) {
 	defer os.Unsetenv("OPENLDAP_EXPORTER_LDAP_SERVER")
 	defer os.Unsetenv("OPENLDAP_EXPORTER_LDAP_TIMEOUT")
 
+	// 设置必要的LDAP服务器配置来通过验证
+	os.Setenv("OPENLDAP_EXPORTER_LDAP_SERVER", "ldap://localhost:389")
+	defer os.Unsetenv("OPENLDAP_EXPORTER_LDAP_SERVER")
+
 	cfg, err := Load("")
 	if err != nil {
 		t.Fatalf("Failed to load default config: %v", err)
@@ -75,6 +79,10 @@ func TestLoad_EnvironmentVariables(t *testing.T) {
 }
 
 func TestLoad_TLSConfig(t *testing.T) {
+	// 设置必要的LDAP服务器配置来通过验证
+	os.Setenv("OPENLDAP_EXPORTER_LDAP_SERVER", "ldap://localhost:389")
+	defer os.Unsetenv("OPENLDAP_EXPORTER_LDAP_SERVER")
+
 	cfg, err := Load("")
 	if err != nil {
 		t.Fatalf("Failed to load default config: %v", err)
@@ -193,7 +201,9 @@ func TestConfig_Priority(t *testing.T) {
 	
 	// 设置环境变量
 	os.Setenv("OPENLDAP_EXPORTER_WEB_LISTEN_ADDRESS", ":8080")
+	os.Setenv("OPENLDAP_EXPORTER_LDAP_SERVER", "ldap://localhost:389")
 	defer os.Unsetenv("OPENLDAP_EXPORTER_WEB_LISTEN_ADDRESS")
+	defer os.Unsetenv("OPENLDAP_EXPORTER_LDAP_SERVER")
 	
 	cfg, err := Load("")
 	if err != nil {
