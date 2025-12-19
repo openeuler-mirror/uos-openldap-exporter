@@ -5,6 +5,7 @@
 # Project variables
 BINARY_NAME=uos-openldap-exporter
 MAIN_PACKAGE=./main.go
+VERSION ?= $(shell cat VERSION)
 
 # Go variables
 GO ?= go
@@ -20,6 +21,13 @@ all: build ## Build the project (default)
 build:
 	$(GO) build -o $(BINARY_NAME) $(MAIN_PACKAGE)
 
+# Build release binaries for different platforms
+.PHONY: release
+release: ## Build release binaries for Linux, macOS, and Windows
+	GOOS=linux GOARCH=amd64 $(GO) build -o dist/$(BINARY_NAME)-linux-amd64 $(MAIN_PACKAGE)
+	GOOS=darwin GOARCH=amd64 $(GO) build -o dist/$(BINARY_NAME)-darwin-amd64 $(MAIN_PACKAGE)
+	GOOS=windows GOARCH=amd64 $(GO) build -o dist/$(BINARY_NAME)-windows-amd64.exe $(MAIN_PACKAGE)
+
 # Install dependencies
 .PHONY: deps
 deps: ## Download dependencies
@@ -29,6 +37,7 @@ deps: ## Download dependencies
 .PHONY: clean
 clean: ## Remove build artifacts
 	rm -f $(BINARY_NAME)
+	rm -rf dist/
 
 # Run tests
 .PHONY: test
@@ -69,6 +78,16 @@ sec: ## Run security checks with gosec
 		$(GO) install github.com/securego/gosec/v2/cmd/gosec@latest; \
 	}
 	gosec ./...
+
+# Build Docker image
+.PHONY: docker-build
+docker-build: ## Build Docker image
+	docker build -t $(BINARY_NAME):$(VERSION) .
+
+# Push Docker image
+.PHONY: docker-push
+docker-push: ## Push Docker image
+	docker push $(BINARY_NAME):$(VERSION)
 
 # Help documentation
 .PHONY: help
