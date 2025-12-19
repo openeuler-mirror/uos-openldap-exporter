@@ -32,6 +32,11 @@ func (m *MockLDAPClient) SearchMonitor(dn, attr string) (string, error) {
 	return args.String(0), args.Error(1)
 }
 
+func (m *MockLDAPClient) CheckHealth() (bool, string) {
+	args := m.Called()
+	return args.Bool(0), args.String(1)
+}
+
 func TestOpenLDAPCollector_ConnectError(t *testing.T) {
 	// 准备测试配置
 	cfg := &config.Config{
@@ -91,6 +96,7 @@ func TestOpenLDAPCollector_SuccessfulCollection(t *testing.T) {
 	mockClient.On("Close").Return()
 	mockClient.On("SearchCount", "", "(objectClass=*)").Return(10, nil)
 	mockClient.On("SearchCount", "ou=people,dc=example,dc=com", "(objectClass=person)").Return(5, nil)
+	mockClient.On("CheckHealth").Return(true, "")
 	
 	// cn=Current,cn=Connections,cn=Monitor
 	mockClient.On("SearchMonitor", "cn=Current,cn=Connections,cn=Monitor", "monitorCounter").Return("5", nil)
