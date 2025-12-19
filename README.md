@@ -191,6 +191,8 @@ export OPENLDAP_EXPORTER_LOG_LEVEL=debug
 }
 ```
 
+健康检查的实现位于 `internal/collector/health_check.go`，它独立于指标收集逻辑，可以直接调用 LDAP 连接和验证功能。
+
 ### 配置重载
 
 目前不支持运行时配置重载，需要重启服务才能使配置变更生效。
