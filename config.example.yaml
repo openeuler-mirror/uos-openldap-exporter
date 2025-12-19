@@ -53,6 +53,25 @@ log:
   # Log format (default: "text")
   # Valid values: "text", "json"
   format: "text"
+  
+  # Log output file path (default: "stdout")
+  # When set to a file path, enables log rotation
+  output: "/var/log/openldap-exporter.log"
+  
+  # Maximum size in megabytes of the log file before it gets rotated (default: 100)
+  max_size: 100
+  
+  # Maximum number of days to retain old log files (default: 30)
+  max_age: 30
+  
+  # Maximum number of old log files to retain (default: 3)
+  max_backups: 3
+  
+  # Use local time for log timestamp instead of UTC (default: false)
+  local_time: false
+  
+  # Compress rotated log files (default: false)
+  compress: false
 
 # Custom LDAP searches (optional)
 # Each search counts the number of entries matching the given criteria
