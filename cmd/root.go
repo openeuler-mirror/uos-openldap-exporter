@@ -33,13 +33,16 @@ and exposes them via HTTP for Prometheus to scrape.`,
 			return fmt.Errorf("failed to load configuration: %w", err)
 		}
 		
-		// Validate configuration
-		if validationErr := cfg.Validate(); validationErr != nil {
-			fmt.Fprintf(os.Stderr, "Configuration error: %v\n", validationErr)
-			return fmt.Errorf("invalid configuration")
-		}
-		
-		log := logger.New(cfg.Log.Level, cfg.Log.Format)
+		log := logger.NewWithConfig(logger.Config{
+			Level:      cfg.Log.Level,
+			Format:     cfg.Log.Format,
+			Output:     cfg.Log.Output,
+			MaxSize:    cfg.Log.MaxSize,
+			MaxAge:     cfg.Log.MaxAge,
+			MaxBackups: cfg.Log.MaxBackups,
+			LocalTime:  cfg.Log.LocalTime,
+			Compress:   cfg.Log.Compress,
+		})
 		coll := collector.New(cfg, log)
 		srv := server.New(cfg.Web.ListenAddress, cfg.Web.MetricsPath, coll, log)
 		return srv.Run()
@@ -95,6 +98,12 @@ func init() {
 	// Log flags
 	rootCmd.Flags().String("log.level", "info", "Log level (debug, info, warn, error)")
 	rootCmd.Flags().String("log.format", "text", "Log format (text, json)")
+	rootCmd.Flags().String("log.output", "stdout", "Log output file path (default stdout)")
+	rootCmd.Flags().Int("log.max-size", 100, "Maximum size in megabytes of the log file before it gets rotated")
+	rootCmd.Flags().Int("log.max-age", 30, "Maximum number of days to retain old log files")
+	rootCmd.Flags().Int("log.max-backups", 3, "Maximum number of old log files to retain")
+	rootCmd.Flags().Bool("log.local-time", false, "Use local time for log timestamp instead of UTC")
+	rootCmd.Flags().Bool("log.compress", false, "Compress rotated log files")
 
 	// Bind viper flags
 	bindErrs := []error{}
@@ -128,6 +137,24 @@ func init() {
 	}
 	if err := viper.BindPFlag("log.format", rootCmd.Flags().Lookup("log.format")); err != nil {
 		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.format flag: %w", err))
+	}
+	if err := viper.BindPFlag("log.output", rootCmd.Flags().Lookup("log.output")); err != nil {
+		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.output flag: %w", err))
+	}
+	if err := viper.BindPFlag("log.max_size", rootCmd.Flags().Lookup("log.max-size")); err != nil {
+		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.max_size flag: %w", err))
+	}
+	if err := viper.BindPFlag("log.max_age", rootCmd.Flags().Lookup("log.max-age")); err != nil {
+		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.max_age flag: %w", err))
+	}
+	if err := viper.BindPFlag("log.max_backups", rootCmd.Flags().Lookup("log.max-backups")); err != nil {
+		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.max_backups flag: %w", err))
+	}
+	if err := viper.BindPFlag("log.local_time", rootCmd.Flags().Lookup("log.local-time")); err != nil {
+		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.local_time flag: %w", err))
+	}
+	if err := viper.BindPFlag("log.compress", rootCmd.Flags().Lookup("log.compress")); err != nil {
+		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.compress flag: %w", err))
 	}
 	
 	// Handle binding errors gracefully
