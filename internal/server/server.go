@@ -1,11 +1,15 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"time"
 
 	"gitee.com/openeuler/uos-openldap-exporter/internal/collector"
+	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
+	"github.com/go-ldap/ldap/v3"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -17,6 +21,7 @@ type Server struct {
 	metricsPath string
 	collector   *collector.OpenLDAPCollector
 	logger      *logrus.Logger
+	ldapConfig  *config.LDAPConfig // Store LDAP config for health checks
 }
 
 // HealthResponse represents the health check response structure
@@ -27,11 +32,23 @@ type HealthResponse struct {
 
 // New creates a new Server instance
 func New(addr, metricsPath string, coll *collector.OpenLDAPCollector, logger *logrus.Logger) *Server {
+	// Extract LDAP config from collector for health checks
+	// This assumes the collector has a GetConfig method to access the config
+	// Note: This is a temporary solution until we have a better configuration sharing mechanism
+	var ldapConfig *config.LDAPConfig
+	
+	// Try to get config from collector if possible
+	// This is a placeholder - actual implementation depends on how config is stored in collector
+	if cfg := coll.GetConfig(); cfg != nil {
+		ldapConfig = cfg
+	}
+
 	return &Server{
 		addr:        addr,
 		metricsPath: metricsPath,
 		collector:   coll,
 		logger:      logger,
+		ldapConfig:  ldapConfig,
 	}
 }
 
@@ -47,7 +64,7 @@ func (s *Server) Run() error {
 		w.Header().Set("Content-Type", "application/json")
 
 		// Perform actual health check by testing LDAP connectivity
-		healthy := s.checkLDAPConnectivity()
+		healthy, errMsg := s.checkLDAPConnectivity()
 
 		response := HealthResponse{
 			Status: "ok",
@@ -55,7 +72,7 @@ func (s *Server) Run() error {
 
 		if !healthy {
 			response.Status = "error"
-			response.LDAP = "LDAP connection failed"
+			response.LDAP = errMsg
 			w.WriteHeader(http.StatusServiceUnavailable)
 		} else {
 			w.WriteHeader(http.StatusOK)
@@ -81,10 +98,57 @@ func (s *Server) Run() error {
 }
 
 // checkLDAPConnectivity verifies LDAP server connectivity
-func (s *Server) checkLDAPConnectivity() bool {
-	// This would ideally perform a lightweight connectivity check
-	// For now, we'll return true as a placeholder
-	// A full implementation would attempt to connect to the LDAP server
-	// without performing expensive operations
-	return true
+func (s *Server) checkLDAPConnectivity() (bool, string) {
+	// Check if we have LDAP configuration
+	if s.ldapConfig == nil {
+		return false, "LDAP configuration not available for health check"
+	}
+
+	if s.ldapConfig.Server == "" {
+		return false, "LDAP server address not configured"
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), s.ldapConfig.Timeout)
+	defer cancel()
+
+	// Create dialer with timeout
+	dialer := &net.Dialer{
+		Timeout: s.ldapConfig.Timeout,
+	}
+
+	// Establish connection
+	conn, err := ldap.DialURL(s.ldapConfig.Server, ldap.DialWithDialer(dialer))
+	if err != nil {
+		s.logger.WithError(err).Debug("Failed to connect to LDAP server")
+		return false, fmt.Sprintf("Failed to connect to LDAP server: %v", err)
+	}
+	defer conn.Close()
+
+	// Start TLS if configured
+	if s.ldapConfig.StartTLS {
+		err = conn.StartTLS(s.ldapConfig.TLSConfig)
+		if err != nil {
+			s.logger.WithError(err).Debug("Failed to start TLS")
+			return false, fmt.Sprintf("Failed to start TLS: %v", err)
+		}
+	}
+
+	// Bind with credentials if provided
+	if s.ldapConfig.BindDN != "" {
+		err = conn.Bind(s.ldapConfig.BindDN, s.ldapConfig.BindPassword)
+		if err != nil {
+			s.logger.WithError(err).Debug("Failed to bind to LDAP server")
+			return false, fmt.Sprintf("Failed to bind to LDAP server: %v", err)
+		}
+	}
+
+	// Perform a lightweight WhoAmI operation
+	_, err = conn.WhoAmI(ctx)
+	if err != nil {
+		s.logger.WithError(err).Debug("Failed to perform WhoAmI operation")
+		return false, fmt.Sprintf("Failed to perform WhoAmI operation: %v", err)
+	}
+
+	s.logger.Debug("LDAP health check successful")
+	return true, ""
 }
