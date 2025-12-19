@@ -70,11 +70,36 @@ var versionCmd = &cobra.Command{
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
-	err := rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
+var (
+	// Define flags as package variables so they can be accessed from Execute
+	webListenAddress     *string
+	webMetricsPath       *string
+	ldapServer           *string
+	ldapBindDN           *string
+	ldapBindPassword     *string
+	ldapTimeout          *time.Duration
+	ldapStartTLS         *bool
+	ldapInsecureSkipVerify *bool
+	logLevel             *string
+	logFormat            *string
+	logOutput            *string
+	logMaxSize           *int
+	logMaxAge            *int
+	logMaxBackups        *int
+	logLocalTime         *bool
+	logCompress          *bool
+)
+
+func Execute() error {
+	// Initialize configuration and bind flags before executing the command
+	if err := initConfigAndFlags(); err != nil {
+		return err
 	}
+
+	if err := rootCmd.Execute(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func init() {
@@ -83,28 +108,31 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config.file", "", "Path to config file")
 	rootCmd.AddCommand(versionCmd)
 
-	// Web flags
-	rootCmd.Flags().String("web.listen-address", ":9330", "Address to listen on")
-	rootCmd.Flags().String("web.metrics-path", "/metrics", "Path under which to expose metrics")
+	// Web flags - store references to flags for later binding
+	webListenAddress = rootCmd.Flags().String("web.listen-address", ":9330", "Address to listen on")
+	webMetricsPath = rootCmd.Flags().String("web.metrics-path", "/metrics", "Path under which to expose metrics")
 
 	// LDAP flags
-	rootCmd.Flags().String("ldap.server", "", "LDAP server URL (e.g., ldap://localhost:389)")
-	rootCmd.Flags().String("ldap.bind-dn", "", "Bind DN for authentication")
-	rootCmd.Flags().String("ldap.bind-password", "", "Bind password")
-	rootCmd.Flags().Duration("ldap.timeout", 10*time.Second, "LDAP connection timeout")
-	rootCmd.Flags().Bool("ldap.start-tls", false, "Enable StartTLS")
-	rootCmd.Flags().Bool("ldap.insecure-skip-verify", false, "Skip LDAP server certificate verification (NOT recommended for production)")
+	ldapServer = rootCmd.Flags().String("ldap.server", "", "LDAP server URL (e.g., ldap://localhost:389)")
+	ldapBindDN = rootCmd.Flags().String("ldap.bind-dn", "", "Bind DN for authentication")
+	ldapBindPassword = rootCmd.Flags().String("ldap.bind-password", "", "Bind password")
+	ldapTimeout = rootCmd.Flags().Duration("ldap.timeout", 10*time.Second, "LDAP connection timeout")
+	ldapStartTLS = rootCmd.Flags().Bool("ldap.start-tls", false, "Enable StartTLS")
+	ldapInsecureSkipVerify = rootCmd.Flags().Bool("ldap.insecure-skip-verify", false, "Skip LDAP server certificate verification (NOT recommended for production)")
 
 	// Log flags
-	rootCmd.Flags().String("log.level", "info", "Log level (debug, info, warn, error)")
-	rootCmd.Flags().String("log.format", "text", "Log format (text, json)")
-	rootCmd.Flags().String("log.output", "stdout", "Log output file path (default stdout)")
-	rootCmd.Flags().Int("log.max-size", 100, "Maximum size in megabytes of the log file before it gets rotated")
-	rootCmd.Flags().Int("log.max-age", 30, "Maximum number of days to retain old log files")
-	rootCmd.Flags().Int("log.max-backups", 3, "Maximum number of old log files to retain")
-	rootCmd.Flags().Bool("log.local-time", false, "Use local time for log timestamp instead of UTC")
-	rootCmd.Flags().Bool("log.compress", false, "Compress rotated log files")
+	logLevel = rootCmd.Flags().String("log.level", "info", "Log level (debug, info, warn, error)")
+	logFormat = rootCmd.Flags().String("log.format", "text", "Log format (text, json)")
+	logOutput = rootCmd.Flags().String("log.output", "stdout", "Log output file path (default stdout)")
+	logMaxSize = rootCmd.Flags().Int("log.max-size", 100, "Maximum size in megabytes of the log file before it gets rotated")
+	logMaxAge = rootCmd.Flags().Int("log.max-age", 30, "Maximum number of days to retain old log files")
+	logMaxBackups = rootCmd.Flags().Int("log.max-backups", 3, "Maximum number of old log files to retain")
+	logLocalTime = rootCmd.Flags().Bool("log.local-time", false, "Use local time for log timestamp instead of UTC")
+	logCompress = rootCmd.Flags().Bool("log.compress", false, "Compress rotated log files")
+}
 
+// initConfigAndFlags initializes the configuration and binds the flags to viper
+func initConfigAndFlags() error {
 	// Bind viper flags
 	bindErrs := []error{}
 
@@ -157,13 +185,15 @@ func init() {
 		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.compress flag: %w", err))
 	}
 
-	// Handle binding errors gracefully
+	// Handle binding errors
 	if len(bindErrs) > 0 {
 		for _, err := range bindErrs {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		}
-		os.Exit(1)
+		return fmt.Errorf("encountered %d configuration binding errors", len(bindErrs))
 	}
+
+	return nil
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -186,5 +216,8 @@ func initConfig() {
 }
 
 func main() {
-	Execute()
+	if err := Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 }
