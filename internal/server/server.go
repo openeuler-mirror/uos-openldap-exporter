@@ -108,8 +108,8 @@ func (rw *responseWriter) WriteHeader(code int) {
 func (s *Server) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// Perform actual health check by testing LDAP connectivity
-	healthy, errMsg := collector.CheckLDAPHealth(s.ldapConfig, s.logger)
+	// Perform actual health check using existing collector instance
+	healthy, errMsg := s.collector.CheckHealth()
 
 	response := HealthResponse{
 		Status: "ok",
