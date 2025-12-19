@@ -2,6 +2,7 @@ package collector
 
 import (
 	"strconv"
+	"time"
 
 	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
 	"github.com/prometheus/client_golang/prometheus"
@@ -264,8 +265,28 @@ func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
 
 // parseLDAPTimestampToSeconds converts LDAP timestamp format to seconds since epoch
 func parseLDAPTimestampToSeconds(timestamp string) (float64, error) {
-	// LDAP timestamps are in the format YYYYMMDDHHMMSSZ or YYYYMMDDHHMMSS.SSSZ
-	// This is a simplified parser - in a real implementation you would want to handle
-	// the format more robustly
-	return 0, nil // Placeholder implementation
+	// LDAP Generalized Time format: YYYYMMDDHHMMSS[.sss]Z or YYYYMMDDHHMMSS[.sss]+HHMM
+	// For simplicity, we'll parse the basic format without milliseconds
+	
+	// Remove trailing Z or timezone info for basic parsing
+	timestamp = timestamp[:len(timestamp)-1] // Remove last char (Z)
+	
+	// Parse format: YYYYMMDDHHMMSS
+	if len(timestamp) >= 14 {
+		year := timestamp[0:4]
+		month := timestamp[4:6]
+		day := timestamp[6:8]
+		hour := timestamp[8:10]
+		minute := timestamp[10:12]
+		second := timestamp[12:14]
+		
+		dateStr := year + "-" + month + "-" + day + "T" + hour + ":" + minute + ":" + second + "Z"
+		t, err := time.Parse(time.RFC3339, dateStr)
+		if err != nil {
+			return 0, err
+		}
+		return float64(t.Unix()), nil
+	}
+	
+	return 0, nil // fallback
 }
