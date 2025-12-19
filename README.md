@@ -19,6 +19,7 @@ uos-openldap-exporter 是一个针对 OpenLDAP 的 Prometheus 监控指标导出
 - 支持 YAML 配置文件和命令行参数配置
 - 结构化日志输出，支持多种日志级别
 - 支持版本信息查看
+- 配置验证功能，确保配置项的有效性
 
 ## 软件架构
 
@@ -115,6 +116,16 @@ custom_searches:
 
 环境变量命名规则：将配置文件中的键名中的点（`.`）替换为下划线（`_`），并加上前缀`OPENLDAP_EXPORTER_`。
 例如：`ldap.server` 对应环境变量 `OPENLDAP_EXPORTER_LDAP_SERVER`
+
+### 配置验证
+
+程序会在启动时对配置进行验证，如果配置不合法会输出错误信息并退出。验证规则包括：
+- `ldap.server` 必须设置
+- `ldap.timeout` 必须为正数
+- `log.level` 必须是 debug/info/warn/error 之一
+- `log.format` 必须是 text/json 之一
+- `web.listen_address` 和 `web.metrics_path` 必须设置
+- `custom_searches` 中的每一项都必须包含 name、base_dn 和 filter 字段
 
 ### 验证运行
 
