@@ -17,9 +17,10 @@ uos-openldap-exporter 是一个针对 OpenLDAP 的 Prometheus 监控指标导出
 - 通过 `/metrics` 接口暴露 Prometheus 格式指标
 - 提供 `/healthz` 健康检查接口
 - 支持 YAML 配置文件和命令行参数配置
-- 结构化日志输出，支持多种日志级别
+- 结构化日志输出，支持多种日志级别和格式
 - 支持版本信息查看
 - 配置验证功能，确保配置项的有效性
+- 支持日志轮转和文件输出
 
 ## 软件架构
 
@@ -76,6 +77,12 @@ web:
 log:
   level: "info"
   format: "text"  # 可选值: "text" 或 "json"，默认为"text"
+  output: "/var/log/openldap-exporter.log"  # 日志输出文件路径，默认为 stdout
+  max_size: 100   # 每个日志文件最大大小(MB)，默认100
+  max_age: 30     # 保留旧日志文件的最大天数，默认30
+  max_backups: 3  # 保留旧日志文件的最大个数，默认3
+  local_time: false  # 是否使用本地时间，默认false(UTC)
+  compress: false    # 是否压缩轮转的日志文件，默认false
 
 custom_searches:
   - name: "user_count"
@@ -97,7 +104,9 @@ custom_searches:
   --ldap.bind-password="secret" \
   --ldap.timeout=30s \
   --web.listen-address=:9331 \
-  --log.level=debug
+  --log.level=debug \
+  --log.output=/var/log/openldap-exporter.log \
+  --log.max-size=50
 ```
 
 ### 查看版本信息
@@ -159,6 +168,12 @@ export OPENLDAP_EXPORTER_LOG_LEVEL=debug
 | --ldap.insecure-skip-verify | false | 是否跳过LDAP服务器证书验证（生产环境不推荐） |
 | --log.level | info | 日志级别（debug, info, warn, error） |
 | --log.format | text | 日志格式（text, json） |
+| --log.output | stdout | 日志输出文件路径 |
+| --log.max-size | 100 | 每个日志文件最大大小(MB) |
+| --log.max-age | 30 | 保留旧日志文件的最大天数 |
+| --log.max-backups | 3 | 保留旧日志文件的最大个数 |
+| --log.local-time | false | 是否使用本地时间 |
+| --log.compress | false | 是否压缩轮转的日志文件 |
 
 ## 收集的指标
 
