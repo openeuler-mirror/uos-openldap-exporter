@@ -62,7 +62,7 @@ func (c *Config) Validate() error {
 	
 	// Validate timeout
 	if c.LDAP.Timeout <= 0 {
-		return fmt.Errorf("ldap.timeout must be positive")
+		return fmt.Errorf("ldap.timeout must be positive, got %v", c.LDAP.Timeout)
 	}
 	
 	// Validate log level
@@ -108,6 +108,13 @@ func (c *Config) Validate() error {
 
 // Load loads configuration from file or environment variables
 func Load(configFile string) (*Config, error) {
+	// Print configuration sources precedence
+	// Precedence (highest to lowest): 
+	// 1. Command line flags (bound via viper.BindPFlag in main)
+	// 2. Environment variables
+	// 3. Config file
+	// 4. Default values
+	
 	// Set default values
 	viper.SetDefault("web.listen_address", ":9330")
 	viper.SetDefault("web.metrics_path", "/metrics")
@@ -126,13 +133,14 @@ func Load(configFile string) (*Config, error) {
 	// 设置环境变量键名替换规则，将点(.)替换为下划线(_)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	
+	// Read in environment variables that match
 	viper.AutomaticEnv()
 
 	// Set config file if provided
 	if configFile != "" {
 		viper.SetConfigFile(configFile)
 		if err := viper.ReadInConfig(); err != nil {
-			return nil, fmt.Errorf("failed to read config file: %w", err)
+			return nil, fmt.Errorf("failed to read config file '%s': %w", configFile, err)
 		}
 	}
 
