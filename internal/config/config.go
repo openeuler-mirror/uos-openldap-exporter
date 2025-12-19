@@ -69,10 +69,10 @@ func Load(configFile string) *Config {
 
 	// Set environment variable prefix
 	viper.SetEnvPrefix("OPENLDAP_EXPORTER")
-	
+
 	// 设置环境变量键名替换规则，将点(.)替换为下划线(_)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	
+
 	viper.AutomaticEnv()
 
 	// Set config file if provided
@@ -88,7 +88,7 @@ func Load(configFile string) *Config {
 	if err := viper.Unmarshal(&cfg); err != nil {
 		panic(fmt.Errorf("failed to parse config: %w", err))
 	}
-	
+
 	// 初始化CustomSearches为空切片而不是nil
 	if cfg.CustomSearches == nil {
 		cfg.CustomSearches = []CustomSearch{}
