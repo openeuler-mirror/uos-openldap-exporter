@@ -102,11 +102,55 @@ custom_searches:
 
 ## 收集的指标
 
-- `openldap_up{}`：LDAP 服务是否可达（1=正常，0=异常）
-- `openldap_entries_total{}`：目录中条目总数
-- `openldap_monitor_connections_total{}`：当前连接数
-- `openldap_monitor_operations_initiated_total{}`：各类操作发起次数（按操作类型分类）
-- `openldap_custom_search_result_count{}`：自定义查询结果数量
+### 基础指标
+
+| 指标名称 | 类型 | 含义 |
+|---------|------|-----|
+| openldap_up | Gauge | OpenLDAP服务器是否可达 |
+| openldap_entries_total | Gauge | 目录中的条目总数 |
+
+### 连接指标
+
+| 指标名称 | 类型 | 含义 |
+|---------|------|-----|
+| openldap_monitor_current_connections | Gauge | 当前连接客户端数量 |
+| openldap_monitor_total_connections | Counter | 服务器启动以来的总连接数 |
+| openldap_monitor_max_connections | Gauge | 服务器配置允许的最大连接数 |
+
+### 操作指标
+
+| 指标名称 | 类型 | 含义 |
+|---------|------|-----|
+| openldap_monitor_active_operations | Gauge | 当前活跃操作数 |
+| openldap_monitor_pending_operations | Gauge | 待处理操作数 |
+| openldap_monitor_operations_initiated_total | Counter | 已发起的操作总数（按操作类型分类） |
+| openldap_monitor_operations_completed_total | Counter | 已完成的操作总数（按操作类型分类） |
+| openldap_monitor_operations_waiting | Gauge | 等待中的操作数（按操作类型分类） |
+
+### 统计指标
+
+| 指标名称 | 类型 | 含义 |
+|---------|------|-----|
+| openldap_monitor_statistics | Counter | 各类统计数据（按统计类型分类） |
+
+### 线程池指标
+
+| 指标名称 | 类型 | 含义 |
+|---------|------|-----|
+| openldap_monitor_threads | Gauge | 线程池统计信息（按线程状态分类） |
+| openldap_monitor_waiters | Gauge | 等待资源的线程数 |
+
+### 时间指标
+
+| 指标名称 | 类型 | 含义 |
+|---------|------|-----|
+| openldap_monitor_time_seconds | Gauge | 系统时间指标（启动时间和当前时间） |
+
+### 自定义搜索指标
+
+| 指标名称 | 类型 | 含义 |
+|---------|------|-----|
+| openldap_custom_search_result_count | Gauge | 自定义LDAP搜索的结果计数 |
 
 ## 参与贡献
 
@@ -118,4 +162,4 @@ custom_searches:
 
 ## 许可证
 
-请查看项目 LICENSE 文件了解详细信息。
+本项目采用 Apache License 2.0 许可证。详情请见 [LICENSE](LICENSE) 文件。
