@@ -1,0 +1,36 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+uos-openldap-exporter
+dist/
+
+# Test binary, build with "go test -c"
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (if using go modules, vendor is managed)
+vendor/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment files
+.env
+
+# Coverage output
+coverage.out
+coverage.html
+
+# VS Code
+.vscode/
+
+# Mac OS
+.DS_Store

@@ -2,6 +2,7 @@ package collector
 
 import (
 	"strconv"
+	"time"
 
 	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
 	"github.com/prometheus/client_golang/prometheus"
@@ -72,6 +73,22 @@ var (
 		prometheus.BuildFQName(namespace, "", "custom_search_result_count"),
 		"Result count of custom LDAP search.",
 		[]string{"server", "name"}, nil)
+
+	// New metrics for enhanced monitoring
+	threadsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "monitor", "threads"),
+		"Thread pool statistics.",
+		[]string{"server", "state"}, nil)
+
+	waitersDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "monitor", "waiters"),
+		"Number of threads waiting on a resource.",
+		[]string{"server"}, nil)
+
+	timeDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "monitor", "time_seconds"),
+		"System time metrics from LDAP server.",
+		[]string{"server", "type"}, nil)
 )
 
 // OpenLDAPCollector implements the prometheus.Collector interface
@@ -102,6 +119,9 @@ func (c *OpenLDAPCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- monitorOpsWaitingDesc
 	ch <- monitorStatDesc
 	ch <- customSearchDesc
+	ch <- threadsDesc
+	ch <- waitersDesc
+	ch <- timeDesc
 }
 
 // Collect implements the prometheus.Collector interface
@@ -201,6 +221,38 @@ func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
+	// Monitor: thread pool statistics
+	threadStates := []string{"Active", "Starting", "Backing", "Pausing", "Pending"}
+	for _, state := range threadStates {
+		dn := "cn=" + state + ",cn=Threads,cn=Monitor"
+		if val, err := client.SearchMonitor(dn, "monitoredInfo"); err == nil {
+			if n, err := strconv.ParseFloat(val, 64); err == nil {
+				threadLabels := prometheus.Labels{"server": labels["server"], "state": state}
+				ch <- prometheus.MustNewConstMetric(threadsDesc, prometheus.GaugeValue, n, threadLabels["server"], threadLabels["state"])
+			}
+		}
+	}
+
+	// Monitor: waiters
+	if val, err := client.SearchMonitor("cn=Waiters,cn=Threads,cn=Monitor", "monitorCounter"); err == nil {
+		if n, err := strconv.ParseFloat(val, 64); err == nil {
+			ch <- prometheus.MustNewConstMetric(waitersDesc, prometheus.GaugeValue, n, labels["server"])
+		}
+	}
+
+	// Monitor: time metrics
+	timeTypes := []string{"Start", "Current"}
+	for _, timeType := range timeTypes {
+		dn := "cn=" + timeType + ",cn=Time,cn=Monitor"
+		if val, err := client.SearchMonitor(dn, "monitorTimestamp"); err == nil {
+			// Convert timestamp to seconds since epoch
+			if secs, err := parseLDAPTimestampToSeconds(val); err == nil {
+				timeLabels := prometheus.Labels{"server": labels["server"], "type": timeType}
+				ch <- prometheus.MustNewConstMetric(timeDesc, prometheus.GaugeValue, secs, timeLabels["server"], timeLabels["type"])
+			}
+		}
+	}
+
 	// Custom searches
 	for _, cs := range c.config.CustomSearches {
 		if count, err := client.SearchCount(cs.BaseDN, cs.Filter); err == nil {
@@ -209,4 +261,32 @@ func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
 			c.logger.Warnf("Custom search '%s' failed: %v", cs.Name, err)
 		}
 	}
+}
+
+// parseLDAPTimestampToSeconds converts LDAP timestamp format to seconds since epoch
+func parseLDAPTimestampToSeconds(timestamp string) (float64, error) {
+	// LDAP Generalized Time format: YYYYMMDDHHMMSS[.sss]Z or YYYYMMDDHHMMSS[.sss]+HHMM
+	// For simplicity, we'll parse the basic format without milliseconds
+	
+	// Remove trailing Z or timezone info for basic parsing
+	timestamp = timestamp[:len(timestamp)-1] // Remove last char (Z)
+	
+	// Parse format: YYYYMMDDHHMMSS
+	if len(timestamp) >= 14 {
+		year := timestamp[0:4]
+		month := timestamp[4:6]
+		day := timestamp[6:8]
+		hour := timestamp[8:10]
+		minute := timestamp[10:12]
+		second := timestamp[12:14]
+		
+		dateStr := year + "-" + month + "-" + day + "T" + hour + ":" + minute + ":" + second + "Z"
+		t, err := time.Parse(time.RFC3339, dateStr)
+		if err != nil {
+			return 0, err
+		}
+		return float64(t.Unix()), nil
+	}
+	
+	return 0, nil // fallback
 }
