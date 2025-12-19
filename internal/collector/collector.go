@@ -97,6 +97,8 @@ var (
 type OpenLDAPCollector struct {
 	config *config.Config
 	logger *logrus.Logger
+	// ldapClientCreator 是一个函数，用于创建LDAP客户端，主要用于测试
+	ldapClientCreator func(*config.LDAPConfig, *logrus.Logger) (LDAPClientInterface, error)
 }
 
 // New creates a new OpenLDAPCollector
@@ -104,6 +106,9 @@ func New(cfg *config.Config, logger *logrus.Logger) *OpenLDAPCollector {
 	return &OpenLDAPCollector{
 		config: cfg,
 		logger: logger,
+		ldapClientCreator: func(cfg *config.LDAPConfig, logger *logrus.Logger) (LDAPClientInterface, error) {
+			return NewLDAPClient(cfg, logger)
+		},
 	}
 }
 
@@ -136,7 +141,7 @@ func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
 	labels := prometheus.Labels{"server": c.config.LDAP.Server}
 
 	// Create LDAP client
-	client, err := NewLDAPClient(&c.config.LDAP, c.logger)
+	client, err := c.ldapClientCreator(&c.config.LDAP, c.logger)
 	if err != nil {
 		c.logger.Errorf("Failed to connect to LDAP: %v", err)
 		ch <- prometheus.MustNewConstMetric(upDesc, prometheus.GaugeValue, 0.0, labels["server"])
