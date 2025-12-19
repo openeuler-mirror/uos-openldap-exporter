@@ -15,7 +15,7 @@ uos-openldap-exporter 是一个针对 OpenLDAP 的 Prometheus 监控指标导出
 - 支持从 `cn=Monitor` 子树收集性能指标
 - 支持自定义 LDAP 查询和计数
 - 通过 `/metrics` 接口暴露 Prometheus 格式指标
-- 提供 `/healthz` 健康检查接口
+- 提供 `/healthz` 健康检查接口，实际检测 LDAP 连接状态
 - 支持 YAML 配置文件和命令行参数配置
 - 结构化日志输出，支持多种日志级别和格式
 - 支持版本信息查看
@@ -142,6 +142,30 @@ export OPENLDAP_EXPORTER_LOG_LEVEL=debug
 - `log.format` 必须是 text/json 之一
 - `web.listen_address` 和 `web.metrics_path` 必须设置
 - `custom_searches` 中的每一项都必须包含 name、base_dn 和 filter 字段
+
+### 健康检查
+
+`/healthz` 端点提供真实的健康检查功能，它会：
+1. 尝试连接到配置的 LDAP 服务器
+2. 如果配置了 StartTLS，则启动 TLS
+3. 如果配置了绑定凭据，则执行绑定操作
+4. 执行轻量级的 WhoAmI 操作验证连接
+5. 返回 JSON 格式的健康状态
+
+健康的响应示例：
+```json
+{
+  "status": "ok"
+}
+```
+
+不健康的响应示例：
+```json
+{
+  "status": "error",
+  "ldap": "Failed to connect to LDAP server: ..."
+}
+```
 
 ### 配置重载
 
