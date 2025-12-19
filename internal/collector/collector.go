@@ -150,6 +150,13 @@ func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
 	// Connection successful
 	ch <- prometheus.MustNewConstMetric(upDesc, prometheus.GaugeValue, 1.0, labels["server"])
 
+	// Check LDAP health status
+	if ok, _ := client.CheckHealth(); ok {
+		c.logger.Debug("LDAP health check passed")
+	} else {
+		c.logger.Debug("LDAP health check failed")
+	}
+
 	// Total entries
 	if count, err := client.SearchCount("", "(objectClass=*)"); err == nil {
 		ch <- prometheus.MustNewConstMetric(entriesTotalDesc, prometheus.GaugeValue, float64(count), labels["server"])
