@@ -45,14 +45,14 @@ func (s *Server) Run() error {
 	mux.Handle(s.metricsPath, promhttp.Handler())
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		
+
 		// Perform actual health check by testing LDAP connectivity
 		healthy := s.checkLDAPConnectivity()
-		
+
 		response := HealthResponse{
 			Status: "ok",
 		}
-		
+
 		if !healthy {
 			response.Status = "error"
 			response.LDAP = "LDAP connection failed"
@@ -60,7 +60,7 @@ func (s *Server) Run() error {
 		} else {
 			w.WriteHeader(http.StatusOK)
 		}
-		
+
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			s.logger.Debugf("Failed to encode health check response: %v", err)
 		}
