@@ -55,13 +55,13 @@ func NewWithConfig(config Config) *logrus.Logger {
 		if config.MaxBackups <= 0 {
 			config.MaxBackups = 3
 		}
-		
+
 		// Ensure log directory exists
 		dir := filepath.Dir(config.Output)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			log.Errorf("Failed to create log directory '%s': %v", dir, err)
 		}
-		
+
 		writer = &lumberjack.Logger{
 			Filename:   config.Output,
 			MaxSize:    config.MaxSize,
