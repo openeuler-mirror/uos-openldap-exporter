@@ -51,7 +51,7 @@ func TestOpenLDAPCollector_ConnectError(t *testing.T) {
 
 	// 创建collector
 	collector := New(cfg, log)
-	
+
 	// 替换ldapClientCreator为总是返回错误的函数
 	collector.ldapClientCreator = func(cfg *config.LDAPConfig, logger *logrus.Logger) (LDAPClientInterface, error) {
 		return nil, errors.New("connection failed")
@@ -97,7 +97,7 @@ func TestOpenLDAPCollector_SuccessfulCollection(t *testing.T) {
 	mockClient.On("SearchCount", "", "(objectClass=*)").Return(10, nil)
 	mockClient.On("SearchCount", "ou=people,dc=example,dc=com", "(objectClass=person)").Return(5, nil)
 	mockClient.On("CheckHealth").Return(true, "")
-	
+
 	// cn=Current,cn=Connections,cn=Monitor
 	mockClient.On("SearchMonitor", "cn=Current,cn=Connections,cn=Monitor", "monitorCounter").Return("5", nil)
 	// cn=Total,cn=Connections,cn=Monitor
@@ -107,7 +107,7 @@ func TestOpenLDAPCollector_SuccessfulCollection(t *testing.T) {
 	// cn=Operations,cn=Monitor
 	mockClient.On("SearchMonitor", "cn=Operations,cn=Monitor", "monitorOpActive").Return("2", nil)
 	mockClient.On("SearchMonitor", "cn=Operations,cn=Monitor", "monitorOpPending").Return("1", nil)
-	
+
 	// Operations
 	operations := []string{"Bind", "Unbind", "Search", "Modify", "Add", "Delete"}
 	for _, op := range operations {
@@ -116,31 +116,31 @@ func TestOpenLDAPCollector_SuccessfulCollection(t *testing.T) {
 		mockClient.On("SearchMonitor", dn, "monitorOpCompleted").Return("9", nil)
 		mockClient.On("SearchMonitor", dn, "monitorOpWaiting").Return("0", nil)
 	}
-	
+
 	// Statistics
 	stats := []string{"Bytes", "Entries", "Referrals", "Operations"}
 	for _, stat := range stats {
 		dn := "cn=" + stat + ",cn=Statistics,cn=Monitor"
 		mockClient.On("SearchMonitor", dn, "monitorCounter").Return("100", nil)
 	}
-	
+
 	// Threads
 	threadStates := []string{"Active", "Starting", "Backing", "Pausing", "Pending"}
 	for _, state := range threadStates {
 		dn := "cn=" + state + ",cn=Threads,cn=Monitor"
 		mockClient.On("SearchMonitor", dn, "monitoredInfo").Return("1", nil)
 	}
-	
+
 	// Waiters
 	mockClient.On("SearchMonitor", "cn=Waiters,cn=Threads,cn=Monitor", "monitorCounter").Return("0", nil)
-	
+
 	// Time
 	mockClient.On("SearchMonitor", "cn=Start,cn=Time,cn=Monitor", "monitorTimestamp").Return("20230101000000Z", nil)
 	mockClient.On("SearchMonitor", "cn=Current,cn=Time,cn=Monitor", "monitorTimestamp").Return("20230101010000Z", nil)
 
 	// 创建collector
 	collector := New(cfg, log)
-	
+
 	// 替换ldapClientCreator为返回mock客户端的函数
 	collector.ldapClientCreator = func(cfg *config.LDAPConfig, logger *logrus.Logger) (LDAPClientInterface, error) {
 		return mockClient, nil
@@ -154,7 +154,7 @@ func TestOpenLDAPCollector_SuccessfulCollection(t *testing.T) {
 	metric, err := registry.Gather()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, metric)
-	
+
 	// 验证mock被正确调用
 	mockClient.AssertExpectations(t)
 }
