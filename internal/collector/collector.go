@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -113,6 +114,20 @@ func New(cfg *config.Config, logger *logrus.Logger) *OpenLDAPCollector {
 // GetLDAPConfig returns the LDAP configuration
 func (c *OpenLDAPCollector) GetLDAPConfig() *config.LDAPConfig {
 	return &c.config.LDAP
+}
+
+// CheckHealth performs a health check using existing LDAP client
+func (c *OpenLDAPCollector) CheckHealth() (bool, string) {
+	// Create LDAP client
+	client, err := c.ldapClientCreator(&c.config.LDAP, c.logger)
+	if err != nil {
+		c.logger.Debugf("Health check failed to create LDAP client: %v", err)
+		return false, fmt.Sprintf("Failed to create LDAP client: %v", err)
+	}
+	defer client.Close()
+
+	// Use the client's CheckHealth method
+	return client.CheckHealth()
 }
 
 // SetLDAPClientCreatorForTest allows setting the ldapClientCreator for testing purposes.
