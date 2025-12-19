@@ -72,22 +72,22 @@ var versionCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 var (
 	// Define flags as package variables so they can be accessed from Execute
-	webListenAddress     *string
-	webMetricsPath       *string
-	ldapServer           *string
-	ldapBindDN           *string
-	ldapBindPassword     *string
-	ldapTimeout          *time.Duration
-	ldapStartTLS         *bool
+	webListenAddress       *string
+	webMetricsPath         *string
+	ldapServer             *string
+	ldapBindDN             *string
+	ldapBindPassword       *string
+	ldapTimeout            *time.Duration
+	ldapStartTLS           *bool
 	ldapInsecureSkipVerify *bool
-	logLevel             *string
-	logFormat            *string
-	logOutput            *string
-	logMaxSize           *int
-	logMaxAge            *int
-	logMaxBackups        *int
-	logLocalTime         *bool
-	logCompress          *bool
+	logLevel               *string
+	logFormat              *string
+	logOutput              *string
+	logMaxSize             *int
+	logMaxAge              *int
+	logMaxBackups          *int
+	logLocalTime           *bool
+	logCompress            *bool
 )
 
 func Execute() error {
