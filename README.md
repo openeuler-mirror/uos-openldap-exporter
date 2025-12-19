@@ -18,6 +18,7 @@ uos-openldap-exporter 是一个针对 OpenLDAP 的 Prometheus 监控指标导出
 - 提供 `/healthz` 健康检查接口
 - 支持 YAML 配置文件和命令行参数配置
 - 结构化日志输出，支持多种日志级别
+- 支持版本信息查看
 
 ## 软件架构
 
@@ -73,6 +74,7 @@ web:
 
 log:
   level: "info"
+  format: "text"  # 可选值: "text" 或 "json"，默认为"text"
 
 custom_searches:
   - name: "user_count"
@@ -91,14 +93,50 @@ custom_searches:
 ./uos-openldap-exporter \
   --ldap.server=ldaps://ldap.example.com:636 \
   --ldap.bind-dn="cn=monitor,dc=example,dc=com" \
-  --web.listen-address=:9331
+  --ldap.bind-password="secret" \
+  --ldap.timeout=30s \
+  --web.listen-address=:9331 \
+  --log.level=debug
 ```
+
+### 查看版本信息
+
+```bash
+./uos-openldap-exporter version
+```
+
+### 配置优先级
+
+配置项的优先级顺序如下（从高到低）：
+1. 命令行参数
+2. 环境变量
+3. 配置文件
+4. 默认值
+
+环境变量命名规则：将配置文件中的键名中的点（`.`）替换为下划线（`_`），并加上前缀`OPENLDAP_EXPORTER_`。
+例如：`ldap.server` 对应环境变量 `OPENLDAP_EXPORTER_LDAP_SERVER`
 
 ### 验证运行
 
 访问以下端点验证服务是否正常运行：
 - 指标端点: http://localhost:9330/metrics
 - 健康检查: http://localhost:9330/healthz
+
+## 命令行参数
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| --config.file | "" | 配置文件路径 |
+| --web.listen-address | :9330 | 监听地址 |
+| --web.metrics-path | /metrics | 指标暴露路径 |
+| --ldap.server | "" | LDAP服务器地址 |
+| --ldap.bind-dn | "" | 绑定DN |
+| --ldap.bind-password | "" | 绑定密码 |
+| --ldap.timeout | 10s | LDAP连接超时时间 |
+| --ldap.start-tls | false | 是否启用StartTLS |
+| --ldap.insecure-skip-verify | false | 是否跳过LDAP服务器证书验证（生产环境不推荐） |
+| --log.level | info | 日志级别（debug, info, warn, error） |
+| --log.format | text | 日志格式（text, json） |
 
 ## 收集的指标
 
@@ -151,14 +189,6 @@ custom_searches:
 | 指标名称 | 类型 | 含义 |
 |---------|------|-----|
 | openldap_custom_search_result_count | Gauge | 自定义LDAP搜索的结果计数 |
-
-## 参与贡献
-
-1. Fork 本仓库
-2. 创建功能分支 (git checkout -b feature/AmazingFeature)
-3. 提交更改 (git commit -m 'Add some AmazingFeature')
-4. 推送到分支 (git push origin feature/AmazingFeature)
-5. 创建 Pull Request
 
 ## 许可证
 
