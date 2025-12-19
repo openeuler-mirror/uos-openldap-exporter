@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"fmt"
 	"net"
 
@@ -118,4 +119,17 @@ func (c *LDAPClient) SearchMonitor(dn, attr string) (string, error) {
 
 	c.logger.Debugf("SearchMonitor returned value %s for dn=%s, attr=%s", vals[0], dn, attr)
 	return vals[0], nil
+}
+
+// CheckHealth performs a health check on the LDAP connection
+func (c *LDAPClient) CheckHealth() (bool, string) {
+	// Perform a lightweight WhoAmI operation
+	_, err := c.conn.WhoAmI(nil)
+	if err != nil {
+		c.logger.Debugf("Health check failed to perform WhoAmI operation: %v", err)
+		return false, fmt.Sprintf("Failed to perform WhoAmI operation: %v", err)
+	}
+
+	c.logger.Debug("LDAP health check successful")
+	return true, ""
 }
