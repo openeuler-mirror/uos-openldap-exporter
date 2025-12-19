@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"context"
 	"fmt"
 	"net"
 
