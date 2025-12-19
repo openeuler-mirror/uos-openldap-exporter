@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"gitee.com/openeuler/uos-openldap-exporter/internal/collector"
-	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -20,7 +19,6 @@ type Server struct {
 	metricsPath string
 	collector   *collector.OpenLDAPCollector
 	logger      *logrus.Logger
-	ldapConfig  *config.LDAPConfig // Store LDAP config for health checks
 }
 
 // HealthResponse represents the health check response structure
@@ -31,13 +29,11 @@ type HealthResponse struct {
 
 // New creates a new Server instance
 func New(addr, metricsPath string, coll *collector.OpenLDAPCollector, logger *logrus.Logger) *Server {
-	// Extract LDAP config from collector for health checks
 	return &Server{
 		addr:        addr,
 		metricsPath: metricsPath,
 		collector:   coll,
 		logger:      logger,
-		ldapConfig:  coll.GetLDAPConfig(),
 	}
 }
 
@@ -49,28 +45,14 @@ func (s *Server) Run() error {
 	}
 
 	// Setup routes with middleware
-	mux := http.NewServeMux()
-
-	// Wrap promhttp handler with logging middleware
-	metricsHandler := s.loggingMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		promhttp.Handler().ServeHTTP(w, r)
-	}))
-
-	mux.Handle(s.metricsPath, metricsHandler)
-
-	// Health check endpoint with logging middleware
-	healthzHandler := s.loggingMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.handleHealthCheck(w, r)
-	}))
-
-	mux.Handle("/healthz", healthzHandler)
+	handler := s.setupRoutes()
 
 	s.logger.Infof("Starting server on %s", s.addr)
 
 	// Create server with timeouts to prevent potential Slowloris attacks
 	server := &http.Server{
 		Addr:         s.addr,
-		Handler:      mux,
+		Handler:      handler,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -87,6 +69,23 @@ func (s *Server) RunWithListener(listener net.Listener) error {
 	}
 
 	// Setup routes with middleware
+	handler := s.setupRoutes()
+
+	s.logger.Infof("Starting server on listener %s", listener.Addr().String())
+
+	// Create server with timeouts to prevent potential Slowloris attacks
+	server := &http.Server{
+		Handler:      handler,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	return server.Serve(listener)
+}
+
+// setupRoutes configures the HTTP routes and middleware
+func (s *Server) setupRoutes() http.Handler {
 	mux := http.NewServeMux()
 
 	// Wrap promhttp handler with logging middleware
@@ -103,17 +102,7 @@ func (s *Server) RunWithListener(listener net.Listener) error {
 
 	mux.Handle("/healthz", healthzHandler)
 
-	s.logger.Infof("Starting server on listener %s", listener.Addr().String())
-
-	// Create server with timeouts to prevent potential Slowloris attacks
-	server := &http.Server{
-		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
-
-	return server.Serve(listener)
+	return mux
 }
 
 // loggingMiddleware provides basic request logging
