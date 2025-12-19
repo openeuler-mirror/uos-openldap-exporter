@@ -54,7 +54,7 @@ type CustomSearch struct {
 }
 
 // Load loads configuration from file or environment variables
-func Load(configFile string) *Config {
+func Load(configFile string) (*Config, error) {
 	// Set default values
 	viper.SetDefault("web.listen_address", ":9330")
 	viper.SetDefault("web.metrics_path", "/metrics")
@@ -69,26 +69,26 @@ func Load(configFile string) *Config {
 
 	// Set environment variable prefix
 	viper.SetEnvPrefix("OPENLDAP_EXPORTER")
-
+	
 	// 设置环境变量键名替换规则，将点(.)替换为下划线(_)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
+	
 	viper.AutomaticEnv()
 
 	// Set config file if provided
 	if configFile != "" {
 		viper.SetConfigFile(configFile)
 		if err := viper.ReadInConfig(); err != nil {
-			panic(fmt.Errorf("failed to read config file: %w", err))
+			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
 	}
 
 	// Parse config into struct
 	var cfg Config
 	if err := viper.Unmarshal(&cfg); err != nil {
-		panic(fmt.Errorf("failed to parse config: %w", err))
+		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
-
+	
 	// 初始化CustomSearches为空切片而不是nil
 	if cfg.CustomSearches == nil {
 		cfg.CustomSearches = []CustomSearch{}
@@ -107,5 +107,5 @@ func Load(configFile string) *Config {
 		}
 	}
 
-	return &cfg
+	return &cfg, nil
 }

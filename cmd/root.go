@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -15,6 +16,9 @@ import (
 
 var (
 	cfgFile string
+	version string // 版本信息，可通过编译时注入
+	commit  string // git提交信息，可通过编译时注入
+	date    string // 构建日期，可通过编译时注入
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -24,11 +28,34 @@ var rootCmd = &cobra.Command{
 	Long: `A Prometheus exporter for OpenLDAP that collects metrics from OpenLDAP server
 and exposes them via HTTP for Prometheus to scrape.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg := config.Load(cfgFile)
+		cfg, err := config.Load(cfgFile)
+		if err != nil {
+			return fmt.Errorf("failed to load configuration: %w", err)
+		}
+		
 		log := logger.New(cfg.Log.Level, cfg.Log.Format)
 		coll := collector.New(cfg, log)
 		srv := server.New(cfg.Web.ListenAddress, cfg.Web.MetricsPath, coll, log)
 		return srv.Run()
+	},
+}
+
+// versionCmd represents the version command
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version information",
+	Long:  `Print the version information and exit`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if version == "" {
+			version = "dev"
+		}
+		if commit == "" {
+			commit = "unknown"
+		}
+		if date == "" {
+			date = "unknown"
+		}
+		fmt.Printf("uos-openldap-exporter Version: %s\nGit Commit: %s\nBuild Date: %s\n", version, commit, date)
 	},
 }
 
@@ -45,6 +72,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config.file", "", "Path to config file")
+	rootCmd.AddCommand(versionCmd)
 
 	// Web flags
 	rootCmd.Flags().String("web.listen-address", ":9330", "Address to listen on")
@@ -54,22 +82,54 @@ func init() {
 	rootCmd.Flags().String("ldap.server", "", "LDAP server URL (e.g., ldap://localhost:389)")
 	rootCmd.Flags().String("ldap.bind-dn", "", "Bind DN for authentication")
 	rootCmd.Flags().String("ldap.bind-password", "", "Bind password")
+	rootCmd.Flags().Duration("ldap.timeout", 10*time.Second, "LDAP connection timeout")
+	rootCmd.Flags().Bool("ldap.start-tls", false, "Enable StartTLS")
+	rootCmd.Flags().Bool("ldap.insecure-skip-verify", false, "Skip LDAP server certificate verification (NOT recommended for production)")
+
+	// Log flags
+	rootCmd.Flags().String("log.level", "info", "Log level (debug, info, warn, error)")
+	rootCmd.Flags().String("log.format", "text", "Log format (text, json)")
 
 	// Bind viper flags
+	bindErrs := []error{}
+	
 	if err := viper.BindPFlag("web.listen_address", rootCmd.Flags().Lookup("web.listen-address")); err != nil {
-		panic(fmt.Errorf("failed to bind web.listen_address flag: %w", err))
+		bindErrs = append(bindErrs, fmt.Errorf("failed to bind web.listen_address flag: %w", err))
 	}
 	if err := viper.BindPFlag("web.metrics_path", rootCmd.Flags().Lookup("web.metrics-path")); err != nil {
-		panic(fmt.Errorf("failed to bind web.metrics_path flag: %w", err))
+		bindErrs = append(bindErrs, fmt.Errorf("failed to bind web.metrics_path flag: %w", err))
 	}
 	if err := viper.BindPFlag("ldap.server", rootCmd.Flags().Lookup("ldap.server")); err != nil {
-		panic(fmt.Errorf("failed to bind ldap.server flag: %w", err))
+		bindErrs = append(bindErrs, fmt.Errorf("failed to bind ldap.server flag: %w", err))
 	}
 	if err := viper.BindPFlag("ldap.bind_dn", rootCmd.Flags().Lookup("ldap.bind-dn")); err != nil {
-		panic(fmt.Errorf("failed to bind ldap.bind_dn flag: %w", err))
+		bindErrs = append(bindErrs, fmt.Errorf("failed to bind ldap.bind_dn flag: %w", err))
 	}
 	if err := viper.BindPFlag("ldap.bind_password", rootCmd.Flags().Lookup("ldap.bind-password")); err != nil {
-		panic(fmt.Errorf("failed to bind ldap.bind_password flag: %w", err))
+		bindErrs = append(bindErrs, fmt.Errorf("failed to bind ldap.bind_password flag: %w", err))
+	}
+	if err := viper.BindPFlag("ldap.timeout", rootCmd.Flags().Lookup("ldap.timeout")); err != nil {
+		bindErrs = append(bindErrs, fmt.Errorf("failed to bind ldap.timeout flag: %w", err))
+	}
+	if err := viper.BindPFlag("ldap.start_tls", rootCmd.Flags().Lookup("ldap.start-tls")); err != nil {
+		bindErrs = append(bindErrs, fmt.Errorf("failed to bind ldap.start_tls flag: %w", err))
+	}
+	if err := viper.BindPFlag("ldap.insecure_skip_verify", rootCmd.Flags().Lookup("ldap.insecure-skip-verify")); err != nil {
+		bindErrs = append(bindErrs, fmt.Errorf("failed to bind ldap.insecure_skip_verify flag: %w", err))
+	}
+	if err := viper.BindPFlag("log.level", rootCmd.Flags().Lookup("log.level")); err != nil {
+		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.level flag: %w", err))
+	}
+	if err := viper.BindPFlag("log.format", rootCmd.Flags().Lookup("log.format")); err != nil {
+		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.format flag: %w", err))
+	}
+	
+	// Handle binding errors gracefully
+	if len(bindErrs) > 0 {
+		for _, err := range bindErrs {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		}
+		os.Exit(1)
 	}
 }
 
