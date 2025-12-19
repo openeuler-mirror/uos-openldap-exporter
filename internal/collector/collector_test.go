@@ -2,6 +2,7 @@ package collector
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -68,7 +69,7 @@ func TestOpenLDAPCollector_ConnectError(t *testing.T) {
 		openldap_up{server="ldap://localhost:389"} 0
 	`
 
-	err := testutil.GatherAndCompare(registry, []byte(expected), "openldap_up")
+	err := testutil.GatherAndCompare(registry, strings.NewReader(expected), "openldap_up")
 	assert.NoError(t, err)
 }
 
