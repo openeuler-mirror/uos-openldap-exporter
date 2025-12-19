@@ -1,25 +1,64 @@
 # Example configuration for uos-openldap-exporter
+#
+# This file demonstrates all available configuration options.
+# You can also configure the exporter via command-line flags or environment variables.
+# See README.md for more details.
 
 ldap:
+  # LDAP server address (required)
+  # Examples:
+  #   ldap://localhost:389     - Plain LDAP
+  #   ldaps://ldap.example.com:636 - LDAPS (LDAP over SSL/TLS)
   server: "ldap://localhost:389"
+  
+  # Bind DN for authentication (optional, for anonymous bind leave empty)
   bind_dn: "cn=admin,dc=example,dc=com"
+  
+  # Bind password (optional, for anonymous bind leave empty)
   bind_password: "secret"
+  
+  # LDAP connection timeout (default: 10s)
   timeout: 10s
+  
+  # Enable StartTLS (default: false)
+  # Use this option when you want to upgrade a plain LDAP connection to TLS
   start_tls: false
+  
+  # Skip LDAP server certificate verification (default: false)
+  # WARNING: Setting this to true is insecure and should never be used in production!
   insecure_skip_verify: false
 
 web:
+  # Address to listen on (default: ":9330")
   listen_address: ":9330"
+  
+  # Path under which to expose metrics (default: "/metrics")
   metrics_path: "/metrics"
 
 log:
+  # Log level (default: "info")
+  # Valid values: "debug", "info", "warn", "error"
   level: "info"
-  format: "text"  # 可选值: "text" 或 "json"，默认为"text"
+  
+  # Log format (default: "text")
+  # Valid values: "text", "json"
+  format: "text"
 
+# Custom LDAP searches (optional)
+# Each search counts the number of entries matching the given criteria
+# and exposes the count as a Prometheus metric.
 custom_searches:
+  # Count users
   - name: "user_count"
     base_dn: "ou=People,dc=example,dc=com"
     filter: "(objectClass=inetOrgPerson)"
+    
+  # Count groups
   - name: "group_count"
     base_dn: "ou=Groups,dc=example,dc=com"
     filter: "(objectClass=groupOfNames)"
+    
+  # Count inactive users (example with a custom attribute)
+  - name: "inactive_user_count"
+    base_dn: "ou=People,dc=example,dc=com"
+    filter: "(&(objectClass=inetOrgPerson)(!(employeeStatus=active)))"
