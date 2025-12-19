@@ -48,19 +48,19 @@ func (s *Server) Run() error {
 
 	// Setup routes with middleware
 	mux := http.NewServeMux()
-	
+
 	// Wrap promhttp handler with logging middleware
 	metricsHandler := s.loggingMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		promhttp.Handler().ServeHTTP(w, r)
 	}))
-	
+
 	mux.Handle(s.metricsPath, metricsHandler)
-	
+
 	// Health check endpoint with logging middleware
 	healthzHandler := s.loggingMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s.handleHealthCheck(w, r)
 	}))
-	
+
 	mux.Handle("/healthz", healthzHandler)
 
 	s.logger.Infof("Starting server on %s", s.addr)
@@ -81,13 +81,13 @@ func (s *Server) Run() error {
 func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		
+
 		// Wrap ResponseWriter to capture status code
 		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-		
+
 		next.ServeHTTP(wrapped, r)
-		
-		s.logger.Debugf("HTTP %s %s - %d (%v)", 
+
+		s.logger.Debugf("HTTP %s %s - %d (%v)",
 			r.Method, r.URL.Path, wrapped.statusCode, time.Since(start))
 	})
 }
