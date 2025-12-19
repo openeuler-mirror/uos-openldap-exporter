@@ -53,6 +53,59 @@ type CustomSearch struct {
 	Filter string `mapstructure:"filter"`
 }
 
+// Validate validates the configuration
+func (c *Config) Validate() error {
+	// Validate LDAP configuration
+	if c.LDAP.Server == "" {
+		return fmt.Errorf("ldap.server is required")
+	}
+	
+	// Validate timeout
+	if c.LDAP.Timeout <= 0 {
+		return fmt.Errorf("ldap.timeout must be positive")
+	}
+	
+	// Validate log level
+	switch c.Log.Level {
+	case "debug", "info", "warn", "error":
+		// Valid log levels
+	default:
+		return fmt.Errorf("invalid log.level: %s, must be one of debug, info, warn, error", c.Log.Level)
+	}
+	
+	// Validate log format
+	switch c.Log.Format {
+	case "text", "json":
+		// Valid log formats
+	default:
+		return fmt.Errorf("invalid log.format: %s, must be one of text, json", c.Log.Format)
+	}
+	
+	// Validate web configuration
+	if c.Web.ListenAddress == "" {
+		return fmt.Errorf("web.listen_address is required")
+	}
+	
+	if c.Web.MetricsPath == "" {
+		return fmt.Errorf("web.metrics_path is required")
+	}
+	
+	// Validate custom searches
+	for i, cs := range c.CustomSearches {
+		if cs.Name == "" {
+			return fmt.Errorf("custom_searches[%d].name is required", i)
+		}
+		if cs.BaseDN == "" {
+			return fmt.Errorf("custom_searches[%d].base_dn is required", i)
+		}
+		if cs.Filter == "" {
+			return fmt.Errorf("custom_searches[%d].filter is required", i)
+		}
+	}
+	
+	return nil
+}
+
 // Load loads configuration from file or environment variables
 func Load(configFile string) (*Config, error) {
 	// Set default values
@@ -105,6 +158,11 @@ func Load(configFile string) (*Config, error) {
 		cfg.LDAP.TLSConfig = &tls.Config{
 			MinVersion: tls.VersionTLS12,
 		}
+	}
+	
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
 
 	return &cfg, nil
