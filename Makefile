@@ -12,21 +12,32 @@ GO ?= go
 GOFMT ?= gofmt -s
 GOFILES := $(shell find . -name "*.go" -type f)
 
+# Git variables for version info
+GIT_COMMIT := $(shell git rev-parse HEAD)
+GIT_DIRTY := $(shell test -n "`git status --porcelain`" && echo "+CHANGES" || true)
+BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+# LDFLAGS for embedding version information
+LDFLAGS := -ldflags "-X 'gitee.com/openeuler/uos-openldap-exporter/cmd.version=$(VERSION)' \
+					  -X 'gitee.com/openeuler/uos-openldap-exporter/cmd.commit=$(GIT_COMMIT)$(GIT_DIRTY)' \
+					  -X 'gitee.com/openeuler/uos-openldap-exporter/cmd.date=$(BUILD_DATE)'"
+
 # Default target
 .PHONY: all
 all: build ## Build the project (default)
 
 # Build binary
 .PHONY: build
-build:
-	$(GO) build -o $(BINARY_NAME) $(MAIN_PACKAGE)
+build: ## Build the binary
+	$(GO) build $(LDFLAGS) -o $(BINARY_NAME) $(MAIN_PACKAGE)
 
 # Build release binaries for different platforms
 .PHONY: release
 release: ## Build release binaries for Linux, macOS, and Windows
-	GOOS=linux GOARCH=amd64 $(GO) build -o dist/$(BINARY_NAME)-linux-amd64 $(MAIN_PACKAGE)
-	GOOS=darwin GOARCH=amd64 $(GO) build -o dist/$(BINARY_NAME)-darwin-amd64 $(MAIN_PACKAGE)
-	GOOS=windows GOARCH=amd64 $(GO) build -o dist/$(BINARY_NAME)-windows-amd64.exe $(MAIN_PACKAGE)
+	mkdir -p dist
+	GOOS=linux GOARCH=amd64 $(GO) build $(LDFLAGS) -o dist/$(BINARY_NAME)-linux-amd64 $(MAIN_PACKAGE)
+	GOOS=darwin GOARCH=amd64 $(GO) build $(LDFLAGS) -o dist/$(BINARY_NAME)-darwin-amd64 $(MAIN_PACKAGE)
+	GOOS=windows GOARCH=amd64 $(GO) build $(LDFLAGS) -o dist/$(BINARY_NAME)-windows-amd64.exe $(MAIN_PACKAGE)
 
 # Install dependencies
 .PHONY: deps
