@@ -117,6 +117,13 @@ custom_searches:
 环境变量命名规则：将配置文件中的键名中的点（`.`）替换为下划线（`_`），并加上前缀`OPENLDAP_EXPORTER_`。
 例如：`ldap.server` 对应环境变量 `OPENLDAP_EXPORTER_LDAP_SERVER`
 
+示例：
+```bash
+export OPENLDAP_EXPORTER_LDAP_SERVER=ldaps://ldap.example.com:636
+export OPENLDAP_EXPORTER_LOG_LEVEL=debug
+./uos-openldap-exporter --web.listen-address=:9331  # 命令行参数优先级最高
+```
+
 ### 配置验证
 
 程序会在启动时对配置进行验证，如果配置不合法会输出错误信息并退出。验证规则包括：
@@ -126,6 +133,10 @@ custom_searches:
 - `log.format` 必须是 text/json 之一
 - `web.listen_address` 和 `web.metrics_path` 必须设置
 - `custom_searches` 中的每一项都必须包含 name、base_dn 和 filter 字段
+
+### 配置重载
+
+目前不支持运行时配置重载，需要重启服务才能使配置变更生效。
 
 ### 验证运行
 
