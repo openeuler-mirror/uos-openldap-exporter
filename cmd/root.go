@@ -33,6 +33,14 @@ and exposes them via HTTP for Prometheus to scrape.`,
 			return fmt.Errorf("failed to load configuration: %w", err)
 		}
 		
+		// Validate configuration
+		if validationErrs := cfg.Validate(); len(validationErrs) > 0 {
+			for _, validationErr := range validationErrs {
+				fmt.Fprintf(os.Stderr, "Configuration error: %v\n", validationErr)
+			}
+			return fmt.Errorf("invalid configuration")
+		}
+		
 		log := logger.New(cfg.Log.Level, cfg.Log.Format)
 		coll := collector.New(cfg, log)
 		srv := server.New(cfg.Web.ListenAddress, cfg.Web.MetricsPath, coll, log)
