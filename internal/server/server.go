@@ -110,6 +110,43 @@ func (s *Server) setupRoutes() http.Handler {
 	return mux
 }
 
+// RunWithListener starts the HTTP server with a specific listener
+func (s *Server) RunWithListener(listener net.Listener) error {
+	// Register collector
+	if err := prometheus.Register(s.collector); err != nil {
+		return fmt.Errorf("failed to register collector: %w", err)
+	}
+
+	// Setup routes with middleware
+	mux := http.NewServeMux()
+
+	// Wrap promhttp handler with logging middleware
+	metricsHandler := s.loggingMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		promhttp.Handler().ServeHTTP(w, r)
+	}))
+
+	mux.Handle(s.metricsPath, metricsHandler)
+
+	// Health check endpoint with logging middleware
+	healthzHandler := s.loggingMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.handleHealthCheck(w, r)
+	}))
+
+	mux.Handle("/healthz", healthzHandler)
+
+	s.logger.Infof("Starting server on listener %s", listener.Addr().String())
+
+	// Create server with timeouts to prevent potential Slowloris attacks
+	server := &http.Server{
+		Handler:      mux,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	return server.Serve(listener)
+}
+
 // loggingMiddleware provides basic request logging
 func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
