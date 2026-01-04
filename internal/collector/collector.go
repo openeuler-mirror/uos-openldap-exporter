@@ -117,6 +117,12 @@ func (c *OpenLDAPCollector) GetLDAPConfig() *config.LDAPConfig {
 	return &c.config.LDAP
 }
 
+// SetLDAPClientCreatorForTest allows setting the ldapClientCreator for testing purposes.
+// This function is intended for use in tests only.
+func (c *OpenLDAPCollector) SetLDAPClientCreatorForTest(creator func(*config.LDAPConfig, *logrus.Logger) (LDAPClientInterface, error)) {
+	c.ldapClientCreator = creator
+}
+
 // Describe implements the prometheus.Collector interface
 func (c *OpenLDAPCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- upDesc
