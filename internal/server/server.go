@@ -110,6 +110,77 @@ func (s *Server) setupRoutes() http.Handler {
 	return mux
 }
 
+// loggingMiddleware provides basic request logging
+func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		// Wrap ResponseWriter to capture status code
+		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+		next.ServeHTTP(wrapped, r)
+
+		s.logger.Debugf("HTTP %s %s - %d (%v)",
+			r.Method, r.URL.Path, wrapped.statusCode, time.Since(start))
+	})
+}
+
+// responseWriter wraps http.ResponseWriter to capture status code
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+// handleHealthCheck handles the health check endpoint
+func (s *Server) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Perform actual health check using existing collector instance
+	healthy, errMsg := s.collector.CheckHealth()
+
+	response := HealthResponse{
+		Status: "ok",
+	}
+
+	if !healthy {
+		response.Status = "error"
+		response.LDAP = errMsg
+		w.WriteHeader(http.StatusServiceUnavailable)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		s.logger.Debugf("Failed to encode health check response: %v", err)
+	}
+}
+
+// setupRoutes configures the HTTP routes and middleware
+func (s *Server) setupRoutes() http.Handler {
+	mux := http.NewServeMux()
+
+	// Wrap promhttp handler with logging middleware
+	metricsHandler := s.loggingMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		promhttp.Handler().ServeHTTP(w, r)
+	}))
+
+	mux.Handle(s.metricsPath, metricsHandler)
+
+	// Health check endpoint with logging middleware
+	healthzHandler := s.loggingMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.handleHealthCheck(w, r)
+	}))
+
+	mux.Handle("/healthz", healthzHandler)
+
+	return mux
+}
+
 // RunWithListener starts the HTTP server with a specific listener
 func (s *Server) RunWithListener(listener net.Listener) error {
 	// Register collector

@@ -260,7 +260,7 @@ func TestServer_Run(t *testing.T) {
 		defer resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode, "Should return 200 OK")
 		assert.Equal(t, "application/json", resp.Header.Get("Content-Type"), "Should return JSON content type")
-		
+
 		// 验证响应体
 		var healthResp HealthResponse
 		err = json.NewDecoder(resp.Body).Decode(&healthResp)
