@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"gitee.com/openeuler/uos-openldap-exporter/internal/collector"
+	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -19,6 +21,7 @@ type Server struct {
 	metricsPath string
 	collector   *collector.OpenLDAPCollector
 	logger      *logrus.Logger
+	ldapConfig  *config.LDAPConfig // Store LDAP config for health checks
 }
 
 // HealthResponse represents the health check response structure
@@ -29,11 +32,13 @@ type HealthResponse struct {
 
 // New creates a new Server instance
 func New(addr, metricsPath string, coll *collector.OpenLDAPCollector, logger *logrus.Logger) *Server {
+	// Extract LDAP config from collector for health checks
 	return &Server{
 		addr:        addr,
 		metricsPath: metricsPath,
 		collector:   coll,
 		logger:      logger,
+		ldapConfig:  coll.GetLDAPConfig(),
 	}
 }
 
