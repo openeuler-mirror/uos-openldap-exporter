@@ -179,6 +179,21 @@ func Load(configFile string) (*Config, error) {
 			MinVersion: tls.VersionTLS12,
 		}
 	}
+	
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("configuration validation failed: %w", err)
+	}
+
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("configuration validation failed: %w", err)
+	}
+
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("configuration validation failed: %w", err)
+	}
 
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
