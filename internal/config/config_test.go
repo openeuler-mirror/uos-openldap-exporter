@@ -106,7 +106,7 @@ func TestLoad_TLSConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load config with insecure setting: %v", err)
 	}
-	
+
 	if !cfgWithInsecure.LDAP.TLSConfig.InsecureSkipVerify {
 		t.Error("Expected InsecureSkipVerify to be true when set via environment")
 	}
@@ -198,18 +198,18 @@ func TestConfig_Validation(t *testing.T) {
 func TestConfig_Priority(t *testing.T) {
 	// 测试配置优先级: Flag > Env > File > Default
 	// 由于Load函数不直接处理flag，我们测试Env > Default
-	
+
 	// 设置环境变量
 	os.Setenv("OPENLDAP_EXPORTER_WEB_LISTEN_ADDRESS", ":8080")
 	os.Setenv("OPENLDAP_EXPORTER_LDAP_SERVER", "ldap://localhost:389")
 	defer os.Unsetenv("OPENLDAP_EXPORTER_WEB_LISTEN_ADDRESS")
 	defer os.Unsetenv("OPENLDAP_EXPORTER_LDAP_SERVER")
-	
+
 	cfg, err := Load("")
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
-	
+
 	// 应该使用环境变量而不是默认值
 	if cfg.Web.ListenAddress != ":8080" {
 		t.Errorf("Expected :8080 from environment, got %s", cfg.Web.ListenAddress)

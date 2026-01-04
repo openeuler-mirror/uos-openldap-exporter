@@ -65,12 +65,12 @@ func (c *Config) Validate() error {
 	if c.LDAP.Server == "" {
 		return fmt.Errorf("ldap.server is required")
 	}
-	
+
 	// Validate timeout
 	if c.LDAP.Timeout <= 0 {
 		return fmt.Errorf("ldap.timeout must be positive, got %v", c.LDAP.Timeout)
 	}
-	
+
 	// Validate log level
 	switch c.Log.Level {
 	case "debug", "info", "warn", "error":
@@ -78,7 +78,7 @@ func (c *Config) Validate() error {
 	default:
 		return fmt.Errorf("invalid log.level: %s, must be one of debug, info, warn, error", c.Log.Level)
 	}
-	
+
 	// Validate log format
 	switch c.Log.Format {
 	case "text", "json":
@@ -86,16 +86,16 @@ func (c *Config) Validate() error {
 	default:
 		return fmt.Errorf("invalid log.format: %s, must be one of text, json", c.Log.Format)
 	}
-	
+
 	// Validate web configuration
 	if c.Web.ListenAddress == "" {
 		return fmt.Errorf("web.listen_address is required")
 	}
-	
+
 	if c.Web.MetricsPath == "" {
 		return fmt.Errorf("web.metrics_path is required")
 	}
-	
+
 	// Validate custom searches
 	for i, cs := range c.CustomSearches {
 		if cs.Name == "" {
@@ -108,19 +108,19 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("custom_searches[%d].filter is required", i)
 		}
 	}
-	
+
 	return nil
 }
 
 // Load loads configuration from file or environment variables
 func Load(configFile string) (*Config, error) {
 	// Print configuration sources precedence
-	// Precedence (highest to lowest): 
+	// Precedence (highest to lowest):
 	// 1. Command line flags (bound via viper.BindPFlag in main)
 	// 2. Environment variables
 	// 3. Config file
 	// 4. Default values
-	
+
 	// Set default values
 	viper.SetDefault("web.listen_address", ":9330")
 	viper.SetDefault("web.metrics_path", "/metrics")
@@ -141,10 +141,10 @@ func Load(configFile string) (*Config, error) {
 
 	// Set environment variable prefix
 	viper.SetEnvPrefix("OPENLDAP_EXPORTER")
-	
+
 	// 设置环境变量键名替换规则，将点(.)替换为下划线(_)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	
+
 	// Read in environment variables that match
 	viper.AutomaticEnv()
 
@@ -161,7 +161,7 @@ func Load(configFile string) (*Config, error) {
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
-	
+
 	// 初始化CustomSearches为空切片而不是nil
 	if cfg.CustomSearches == nil {
 		cfg.CustomSearches = []CustomSearch{}
@@ -180,6 +180,11 @@ func Load(configFile string) (*Config, error) {
 		}
 	}
 	
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("configuration validation failed: %w", err)
+	}
+
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("configuration validation failed: %w", err)
