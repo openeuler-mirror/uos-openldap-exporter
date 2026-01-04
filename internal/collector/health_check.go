@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"context"
 	"fmt"
 	"net"
 
@@ -16,9 +15,6 @@ func CheckLDAPHealth(cfg *config.LDAPConfig, logger *logrus.Logger) (bool, strin
 		logger.Debug("LDAP server URL is empty")
 		return false, "LDAP server URL is empty"
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
-	defer cancel()
 
 	// Establish connection
 	conn, err := ldap.DialURL(cfg.Server, ldap.DialWithDialer(&net.Dialer{Timeout: cfg.Timeout}))
