@@ -52,10 +52,10 @@ func TestNew(t *testing.T) {
 	}
 	logger := logrus.New()
 	coll := collector.New(cfg, logger)
-	
+
 	// Act
 	server := New(":8080", "/metrics", coll, logger)
-	
+
 	// Assert
 	assert.NotNil(t, server)
 	assert.Equal(t, ":8080", server.addr)
@@ -68,7 +68,7 @@ func TestLoggingMiddleware(t *testing.T) {
 	// Arrange
 	logger := logrus.New()
 	logger.SetOutput(bytes.NewBuffer([]byte{})) // Discard logs
-	
+
 	cfg := &config.Config{
 		LDAP: config.LDAPConfig{
 			Server:  "localhost:389",
@@ -77,21 +77,21 @@ func TestLoggingMiddleware(t *testing.T) {
 	}
 	coll := collector.New(cfg, logger)
 	server := New(":8080", "/metrics", coll, logger)
-	
+
 	handlerCalled := false
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handlerCalled = true
 		w.WriteHeader(http.StatusOK)
 	})
-	
+
 	// Act
 	wrappedHandler := server.loggingMiddleware(testHandler)
-	
+
 	req := httptest.NewRequest("GET", "/test", nil)
 	rec := httptest.NewRecorder()
-	
+
 	wrappedHandler.ServeHTTP(rec, req)
-	
+
 	// Assert
 	assert.True(t, handlerCalled)
 	assert.Equal(t, http.StatusOK, rec.Code)
@@ -101,7 +101,7 @@ func TestHandleHealthCheckSuccess(t *testing.T) {
 	// Arrange
 	logger := logrus.New()
 	logger.SetOutput(bytes.NewBuffer([]byte{})) // Discard logs
-	
+
 	cfg := &config.Config{
 		LDAP: config.LDAPConfig{
 			Server:       "localhost:389",
@@ -110,31 +110,31 @@ func TestHandleHealthCheckSuccess(t *testing.T) {
 			Timeout:      30 * time.Second,
 		},
 	}
-	
+
 	coll := collector.New(cfg, logger)
-	
+
 	// 使用测试辅助函数设置ldapClientCreator
 	mockClient := new(MockLDAPClient)
 	mockClient.On("Close").Return()
 	mockClient.On("CheckHealth").Return(true, "")
-	
+
 	coll.SetLDAPClientCreatorForTest(func(cfg *config.LDAPConfig, logger *logrus.Logger) (collector.LDAPClientInterface, error) {
 		return mockClient, nil
 	})
-	
+
 	server := New(":8080", "/metrics", coll, logger)
-	
+
 	// Create request and response recorder
 	req := httptest.NewRequest("GET", "/healthz", nil)
 	rec := httptest.NewRecorder()
-	
+
 	// Act
 	server.handleHealthCheck(rec, req)
-	
+
 	// Assert
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
-	
+
 	var response HealthResponse
 	err := json.Unmarshal(rec.Body.Bytes(), &response)
 	assert.NoError(t, err)
@@ -145,7 +145,7 @@ func TestHandleHealthCheckFailure(t *testing.T) {
 	// Arrange
 	logger := logrus.New()
 	logger.SetOutput(bytes.NewBuffer([]byte{})) // Discard logs
-	
+
 	cfg := &config.Config{
 		LDAP: config.LDAPConfig{
 			Server:       "invalid-server:389",
@@ -154,27 +154,27 @@ func TestHandleHealthCheckFailure(t *testing.T) {
 			Timeout:      1 * time.Second, // Short timeout for faster test
 		},
 	}
-	
+
 	coll := collector.New(cfg, logger)
-	
+
 	// 使用测试辅助函数设置ldapClientCreator
 	coll.SetLDAPClientCreatorForTest(func(cfg *config.LDAPConfig, logger *logrus.Logger) (collector.LDAPClientInterface, error) {
 		return nil, errors.New("connection failed")
 	})
-	
+
 	server := New(":8080", "/metrics", coll, logger)
-	
+
 	// Create request and response recorder
 	req := httptest.NewRequest("GET", "/healthz", nil)
 	rec := httptest.NewRecorder()
-	
+
 	// Act
 	server.handleHealthCheck(rec, req)
-	
+
 	// Assert
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
-	
+
 	var response HealthResponse
 	err := json.Unmarshal(rec.Body.Bytes(), &response)
 	assert.NoError(t, err)
@@ -186,10 +186,10 @@ func TestResponseWriter_WriteHeader(t *testing.T) {
 	// Arrange
 	rec := httptest.NewRecorder()
 	wrapped := &responseWriter{ResponseWriter: rec, statusCode: http.StatusOK}
-	
+
 	// Act
 	wrapped.WriteHeader(http.StatusInternalServerError)
-	
+
 	// Assert
 	assert.Equal(t, http.StatusInternalServerError, wrapped.statusCode)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
@@ -197,10 +197,10 @@ func TestResponseWriter_WriteHeader(t *testing.T) {
 
 func TestServer_Run(t *testing.T) {
 	// Note: This test would require more complex setup including a real HTTP server
-	// and would typically be an integration test. For unit testing, we test the 
+	// and would typically be an integration test. For unit testing, we test the
 	// individual components instead.
 	t.Skip("Skipping Run test as it requires complex setup and would be an integration test")
-	
+
 	// In a real implementation, this would involve:
 	// 1. Creating a test server on a random port
 	// 2. Making HTTP requests to the endpoints
