@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -49,6 +50,47 @@ func (s *Server) Run() error {
 	}
 
 	// Setup routes with middleware
+	handler := s.setupRoutes()
+
+	s.logger.Infof("Starting server on %s", s.addr)
+
+	// Create server with timeouts to prevent potential Slowloris attacks
+	server := &http.Server{
+		Addr:         s.addr,
+		Handler:      handler,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	return server.ListenAndServe()
+}
+
+// RunWithListener starts the HTTP server with a specific listener
+func (s *Server) RunWithListener(listener net.Listener) error {
+	// Register collector
+	if err := prometheus.Register(s.collector); err != nil {
+		return fmt.Errorf("failed to register collector: %w", err)
+	}
+
+	// Setup routes with middleware
+	handler := s.setupRoutes()
+
+	s.logger.Infof("Starting server on listener %s", listener.Addr().String())
+
+	// Create server with timeouts to prevent potential Slowloris attacks
+	server := &http.Server{
+		Handler:      handler,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	return server.Serve(listener)
+}
+
+// setupRoutes configures the HTTP routes and middleware
+func (s *Server) setupRoutes() http.Handler {
 	mux := http.NewServeMux()
 
 	// Wrap promhttp handler with logging middleware
@@ -65,18 +107,7 @@ func (s *Server) Run() error {
 
 	mux.Handle("/healthz", healthzHandler)
 
-	s.logger.Infof("Starting server on %s", s.addr)
-
-	// Create server with timeouts to prevent potential Slowloris attacks
-	server := &http.Server{
-		Addr:         s.addr,
-		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
-
-	return server.ListenAndServe()
+	return mux
 }
 
 // loggingMiddleware provides basic request logging
