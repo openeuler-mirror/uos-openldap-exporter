@@ -1,8 +1,11 @@
 package collector
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net"
+	"strings"
+	"time"
 
 	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
 	"github.com/go-ldap/ldap/v3"
@@ -123,12 +126,188 @@ func (c *LDAPClient) SearchMonitor(dn, attr string) (string, error) {
 // CheckHealth performs a health check on the LDAP connection
 func (c *LDAPClient) CheckHealth() (bool, string) {
 	// Perform a lightweight WhoAmI operation
+	startTime := time.Now()
 	_, err := c.conn.WhoAmI(nil)
+	duration := time.Since(startTime)
+	
 	if err != nil {
 		c.logger.Debugf("Health check failed to perform WhoAmI operation: %v", err)
 		return false, fmt.Sprintf("Failed to perform WhoAmI operation: %v", err)
 	}
 
-	c.logger.Debug("LDAP health check successful")
+	c.logger.Debugf("LDAP health check successful, took %v", duration)
 	return true, ""
+}
+
+// GetTLSStats 获取TLS连接统计信息
+func (c *LDAPClient) GetTLSStats() (map[string]string, error) {
+	stats := make(map[string]string)
+	
+	// Check if connection is using TLS
+	if c.conn.IsTLS() {
+		stats["tls_connections"] = "1"
+		stats["tls_active_connections"] = "1"
+	} else {
+		stats["tls_connections"] = "0"
+		stats["tls_active_connections"] = "0"
+	}
+	
+	// Try to get TLS-specific stats from monitor
+	if val, err := c.SearchMonitor("cn=TLS,cn=Monitor", "monitorCounter"); err == nil {
+		stats["tls_connections_total"] = val
+	}
+	
+	// Check for StartTLS statistics
+	if val, err := c.SearchMonitor("cn=StartTLS,cn=Operations,cn=Monitor", "monitorOpCompleted"); err == nil {
+		stats["starttls_success_total"] = val
+	}
+	
+	if val, err := c.SearchMonitor("cn=StartTLS,cn=Operations,cn=Monitor", "monitorOpUnwillingToPerform"); err == nil {
+		stats["starttls_failure_total"] = val
+	}
+	
+	return stats, nil
+}
+
+// GetReplicationStatus 获取复制状态
+func (c *LDAPClient) GetReplicationStatus() (map[string]string, error) {
+	status := make(map[string]string)
+	
+	// Check for syncrepl provider status
+	req := ldap.NewSearchRequest(
+		"cn=Sync,cn=Providers,cn=Monitor",
+		ldap.ScopeWholeSubtree,
+		ldap.NeverDerefAliases,
+		0,
+		0,
+		false,
+		"(objectClass=*)",
+		[]string{"*"},
+		nil,
+	)
+	
+	res, err := c.conn.Search(req)
+	if err == nil && len(res.Entries) > 0 {
+		for _, entry := range res.Entries {
+			for _, attr := range entry.Attributes {
+				if strings.Contains(strings.ToLower(attr.Name), "status") || 
+				   strings.Contains(strings.ToLower(attr.Name), "state") ||
+				   strings.Contains(strings.ToLower(attr.Name), "delay") {
+					status[attr.Name] = attr.Values[0]
+				}
+			}
+		}
+	}
+	
+	// Try to get replication provider information from cn=SyncRepl
+	req = ldap.NewSearchRequest(
+		"cn=SyncRepl,cn=config",
+		ldap.ScopeWholeSubtree,
+		ldap.NeverDerefAliases,
+		0,
+		0,
+		false,
+		"(objectClass=olcSyncreplConfig)",
+		[]string{"olcDatabase", "olcSyncRepl"},
+		nil,
+	)
+	
+	res, err = c.conn.Search(req)
+	if err == nil && len(res.Entries) > 0 {
+		for _, entry := range res.Entries {
+			for _, attr := range entry.Attributes {
+				if attr.Name == "olcSyncRepl" {
+					for _, value := range attr.Values {
+						// Parse replication configuration to extract provider info
+						if strings.Contains(value, "provider=") {
+							parts := strings.Split(value, " ")
+							for _, part := range parts {
+								if strings.HasPrefix(part, "provider=") {
+									provider := strings.TrimPrefix(part, "provider=")
+									status["provider"] = provider
+								} else if strings.HasPrefix(part, "binddn=") {
+									binddn := strings.TrimPrefix(part, "binddn=")
+									status["binddn"] = binddn
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	return status, nil
+}
+
+// GetSecurityStats 获取安全相关统计
+func (c *LDAPClient) GetSecurityStats() (map[string]string, error) {
+	stats := make(map[string]string)
+	
+	// Get authentication statistics from monitor
+	authStats := []string{
+		"cn=Authentication,cn=Monitor",
+		"cn=Security,cn=Monitor",
+	}
+	
+	for _, baseDN := range authStats {
+		req := ldap.NewSearchRequest(
+			baseDN,
+			ldap.ScopeBaseObject,
+			ldap.NeverDerefAliases,
+			0,
+			0,
+			false,
+			"(objectClass=*)",
+			[]string{"*"},
+			nil,
+		)
+		
+		res, err := c.conn.Search(req)
+		if err == nil && len(res.Entries) > 0 {
+			for _, attr := range res.Entries[0].Attributes {
+				if strings.Contains(strings.ToLower(attr.Name), "auth") ||
+				   strings.Contains(strings.ToLower(attr.Name), "bind") ||
+				   strings.Contains(strings.ToLower(attr.Name), "sasl") ||
+				   strings.Contains(strings.ToLower(attr.Name), "strong") {
+					stats[attr.Name] = attr.Values[0]
+				}
+			}
+		}
+	}
+	
+	// Specific security stats
+	if val, err := c.SearchMonitor("cn=Simple Bind,cn=Operations,cn=Monitor", "monitorOpCompleted"); err == nil {
+		stats["simple_bind_total"] = val
+	}
+	
+	if val, err := c.SearchMonitor("cn=SASL,cn=Operations,cn=Monitor", "monitorOpCompleted"); err == nil {
+		stats["sasl_bind_total"] = val
+	}
+	
+	return stats, nil
+}
+
+// GetPerformanceStats 获取性能相关统计
+func (c *LDAPClient) GetPerformanceStats() (map[string]string, error) {
+	stats := make(map[string]string)
+	
+	// Get performance metrics from monitor
+	perfDns := []struct {
+		dn   string
+		attr string
+		key  string
+	}{
+		{"cn=Read,cn=Operations,cn=Monitor", "monitorOpCompleted", "read_ops_completed"},
+		{"cn=Compare,cn=Operations,cn=Monitor", "monitorOpCompleted", "compare_ops_completed"},
+		{"cn=Time,cn=Monitor", "monitorTimestamp", "current_time"},
+	}
+	
+	for _, perf := range perfDns {
+		if val, err := c.SearchMonitor(perf.dn, perf.attr); err == nil {
+			stats[perf.key] = val
+		}
+	}
+	
+	return stats, nil
 }
