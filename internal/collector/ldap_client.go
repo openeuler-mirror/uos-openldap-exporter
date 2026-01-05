@@ -143,8 +143,8 @@ func (c *LDAPClient) CheckHealth() (bool, string) {
 func (c *LDAPClient) GetTLSStats() (map[string]string, error) {
 	stats := make(map[string]string)
 	
-	// Check if connection is using TLS
-	if c.conn.IsTLS() {
+	// We can't directly check if the connection is TLS in go-ldap, so we'll check config
+	if c.config.StartTLS {
 		stats["tls_connections"] = "1"
 		stats["tls_active_connections"] = "1"
 	} else {
@@ -155,6 +155,9 @@ func (c *LDAPClient) GetTLSStats() (map[string]string, error) {
 	// Try to get TLS-specific stats from monitor
 	if val, err := c.SearchMonitor("cn=TLS,cn=Monitor", "monitorCounter"); err == nil {
 		stats["tls_connections_total"] = val
+	} else {
+		// If cn=TLS,cn=Monitor is not available, default to connection status
+		c.logger.Debugf("Could not get TLS stats from monitor: %v", err)
 	}
 	
 	// Check for StartTLS statistics
@@ -197,6 +200,8 @@ func (c *LDAPClient) GetReplicationStatus() (map[string]string, error) {
 				}
 			}
 		}
+	} else {
+		c.logger.Debugf("Could not get replication provider status from monitor: %v", err)
 	}
 	
 	// Try to get replication provider information from cn=SyncRepl
@@ -235,6 +240,8 @@ func (c *LDAPClient) GetReplicationStatus() (map[string]string, error) {
 				}
 			}
 		}
+	} else {
+		c.logger.Debugf("Could not get replication config from cn=config: %v", err)
 	}
 	
 	return status, nil
@@ -279,10 +286,14 @@ func (c *LDAPClient) GetSecurityStats() (map[string]string, error) {
 	// Specific security stats
 	if val, err := c.SearchMonitor("cn=Simple Bind,cn=Operations,cn=Monitor", "monitorOpCompleted"); err == nil {
 		stats["simple_bind_total"] = val
+	} else {
+		c.logger.Debugf("Could not get simple bind stats: %v", err)
 	}
 	
 	if val, err := c.SearchMonitor("cn=SASL,cn=Operations,cn=Monitor", "monitorOpCompleted"); err == nil {
 		stats["sasl_bind_total"] = val
+	} else {
+		c.logger.Debugf("Could not get SASL bind stats: %v", err)
 	}
 	
 	return stats, nil
@@ -306,6 +317,8 @@ func (c *LDAPClient) GetPerformanceStats() (map[string]string, error) {
 	for _, perf := range perfDns {
 		if val, err := c.SearchMonitor(perf.dn, perf.attr); err == nil {
 			stats[perf.key] = val
+		} else {
+			c.logger.Debugf("Could not get performance stats for %s: %v", perf.dn, err)
 		}
 	}
 	
