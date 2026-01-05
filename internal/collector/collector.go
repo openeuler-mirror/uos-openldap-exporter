@@ -399,19 +399,19 @@ func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
 				ch <- prometheus.MustNewConstMetric(tlsConnectionsDesc, prometheus.CounterValue, n, labels["server"])
 			}
 		}
-		
+
 		if val, ok := tlsStats["tls_active_connections"]; ok {
 			if n, err := strconv.ParseFloat(val, 64); err == nil {
 				ch <- prometheus.MustNewConstMetric(tlsActiveConnectionsDesc, prometheus.GaugeValue, n, labels["server"])
 			}
 		}
-		
+
 		if val, ok := tlsStats["starttls_success_total"]; ok {
 			if n, err := strconv.ParseFloat(val, 64); err == nil {
 				ch <- prometheus.MustNewConstMetric(startTlsSuccessDesc, prometheus.CounterValue, n, labels["server"])
 			}
 		}
-		
+
 		if val, ok := tlsStats["starttls_failure_total"]; ok {
 			if n, err := strconv.ParseFloat(val, 64); err == nil {
 				ch <- prometheus.MustNewConstMetric(startTlsFailureDesc, prometheus.CounterValue, n, labels["server"])
@@ -424,18 +424,18 @@ func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
 		if provider, ok := replStats["provider"]; ok {
 			// Set provider status based on whether we found a provider
 			providerLabels := prometheus.Labels{
-				"server": labels["server"],
+				"server":   labels["server"],
 				"provider": provider,
 			}
-			
+
 			// We assume the provider is up if we can get its config
-			ch <- prometheus.MustNewConstMetric(replicationProviderStatusDesc, prometheus.GaugeValue, 1.0, 
+			ch <- prometheus.MustNewConstMetric(replicationProviderStatusDesc, prometheus.GaugeValue, 1.0,
 				providerLabels["server"], providerLabels["provider"])
-			
+
 			// Check for delay if available
 			if delay, ok := replStats["delay"]; ok {
 				if n, err := strconv.ParseFloat(delay, 64); err == nil {
-					ch <- prometheus.MustNewConstMetric(replicationProviderDelayDesc, prometheus.GaugeValue, n, 
+					ch <- prometheus.MustNewConstMetric(replicationProviderDelayDesc, prometheus.GaugeValue, n,
 						providerLabels["server"], providerLabels["provider"])
 				}
 			}
@@ -451,7 +451,7 @@ func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
 				ch <- prometheus.MustNewConstMetric(securitySimpleBindCountDesc, prometheus.CounterValue, n, labels["server"])
 			}
 		}
-		
+
 		if val, ok := secStats["sasl_bind_total"]; ok {
 			if n, err := strconv.ParseFloat(val, 64); err == nil {
 				ch <- prometheus.MustNewConstMetric(securitySaslBindCountDesc, prometheus.CounterValue, n, labels["server"])
@@ -466,10 +466,10 @@ func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
 		if val, ok := perfStats["read_ops_completed"]; ok {
 			if n, err := strconv.ParseFloat(val, 64); err == nil {
 				opLabels := prometheus.Labels{
-					"server": labels["server"],
+					"server":    labels["server"],
 					"operation": "read",
 				}
-				ch <- prometheus.MustNewConstMetric(ldapOperationResponseTimeDesc, prometheus.CounterValue, n, 
+				ch <- prometheus.MustNewConstMetric(ldapOperationResponseTimeDesc, prometheus.CounterValue, n,
 					opLabels["server"], opLabels["operation"])
 			}
 		}

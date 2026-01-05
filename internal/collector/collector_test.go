@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
