@@ -289,6 +289,11 @@ func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
 	c.collectWithClient(ch, nil, "")
 }
 
+// Collect implements the PluginCollector interface
+func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric, client LDAPClientInterface, server string) error {
+	return c.CollectWithClient(ch, client, server)
+}
+
 // CollectWithClient implements the PluginCollector interface - this is the method that actually does the work
 func (c *OpenLDAPCollector) CollectWithClient(ch chan<- prometheus.Metric, client LDAPClientInterface, server string) error {
 	labels := prometheus.Labels{"server": server}
