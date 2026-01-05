@@ -13,10 +13,9 @@ import (
 )
 
 func main() {
-	// 修复：logger.New需要参数
 	log := logger.New("info", "text")
 
-	cfg, err := config.Load("")  // 修复：LoadConfig应该是Load
+	cfg, err := config.Load("") 
 	if err != nil {
 		log.Errorf("Failed to load config: %v", err)
 		os.Exit(1)
@@ -38,22 +37,21 @@ func main() {
 		log.SetFormatter(&logrus.JSONFormatter{})
 	}
 
-	collector := collector.New(cfg, log)
+	ldapCollector := collector.New(cfg, log)
 	
-	// 修复：获取插件管理器的正确方式
-	pm := collector.GetPluginManager()
+	// 配置并注册所有需要的插件
+	pm := ldapCollector.GetPluginManager()
 	pm.ConfigurePlugins(cfg.Plugins.Enabled)
 	
-	// 修复：传递正确的参数到RegisterPlugin方法
-	pm.RegisterPlugin(collector)
+	// 使用适配器注册主收集器作为插件
+	pluginAdapter := collector.NewPluginAdapter(ldapCollector) // 这是包级函数调用
+	pm.RegisterPlugin(pluginAdapter)
 
-	// 修复：注册默认插件 - 修复调用方式为独立函数
-	collector.RegisterDefaultPlugins(pm)
+	// 注册默认插件
+	ldapCollector.RegisterDefaultPlugins(pm)
 
-	// 修复：删除未使用的server变量声明
-	server.New(cfg.Web.ListenAddress, cfg.Web.MetricsPath, collector, log)
+	server.New(cfg.Web.ListenAddress, cfg.Web.MetricsPath, ldapCollector, log)
 
-	// 修复：cmd.Execute不需要参数，因为服务器启动逻辑在cobra命令中定义
 	if err := cmd.Execute(); err != nil {
 		log.Errorf("Server stopped with error: %v", err)
 		os.Exit(1)
