@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
-	"github.com/go-ldap/ldap/v3"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 )
