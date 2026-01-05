@@ -6,6 +6,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// LDAPClientInterface 定义LDAP客户端的基本操作
+type LDAPClientInterface interface {
+	// Search 执行LDAP搜索操作
+	Search(baseDN, filter string, attributes []string) (interface{}, error)
+	// Close 关闭LDAP连接
+	Close() error
+}
+
 // PluginCollector 接口定义插件收集器的基本方法
 type PluginCollector interface {
 	// Name 返回插件的唯一名称

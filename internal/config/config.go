@@ -9,12 +9,18 @@ import (
 	"github.com/spf13/viper"
 )
 
+// PluginConfig defines plugin-related configuration
+type PluginConfig struct {
+	Enabled []string `mapstructure:"enabled"` // List of enabled plugins
+}
+
 // Config holds the configuration for the OpenLDAP Exporter
 type Config struct {
 	Web            WebConfig      `mapstructure:"web"`
 	LDAP           LDAPConfig     `mapstructure:"ldap"`
 	Log            LogConfig      `mapstructure:"log"`
 	CustomSearches []CustomSearch `mapstructure:"custom_searches"`
+	Plugins        PluginConfig   `mapstructure:"plugins"`
 }
 
 func NewConfig() *Config {
@@ -138,6 +144,7 @@ func Load(configFile string) (*Config, error) {
 	viper.SetDefault("log.max_backups", 3)
 	viper.SetDefault("log.local_time", false)
 	viper.SetDefault("log.compress", false)
+	viper.SetDefault("plugins.enabled", []string{}) // Default to no plugins enabled
 
 	// Set environment variable prefix
 	viper.SetEnvPrefix("OPENLDAP_EXPORTER")
