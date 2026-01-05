@@ -391,6 +391,89 @@ func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
 			c.logger.Warnf("Custom search '%s' failed: %v", cs.Name, err)
 		}
 	}
+
+	// Collect new SSL/TLS related metrics
+	if tlsStats, err := client.GetTLSStats(); err == nil {
+		if val, ok := tlsStats["tls_connections"]; ok {
+			if n, err := strconv.ParseFloat(val, 64); err == nil {
+				ch <- prometheus.MustNewConstMetric(tlsConnectionsDesc, prometheus.CounterValue, n, labels["server"])
+			}
+		}
+		
+		if val, ok := tlsStats["tls_active_connections"]; ok {
+			if n, err := strconv.ParseFloat(val, 64); err == nil {
+				ch <- prometheus.MustNewConstMetric(tlsActiveConnectionsDesc, prometheus.GaugeValue, n, labels["server"])
+			}
+		}
+		
+		if val, ok := tlsStats["starttls_success_total"]; ok {
+			if n, err := strconv.ParseFloat(val, 64); err == nil {
+				ch <- prometheus.MustNewConstMetric(startTlsSuccessDesc, prometheus.CounterValue, n, labels["server"])
+			}
+		}
+		
+		if val, ok := tlsStats["starttls_failure_total"]; ok {
+			if n, err := strconv.ParseFloat(val, 64); err == nil {
+				ch <- prometheus.MustNewConstMetric(startTlsFailureDesc, prometheus.CounterValue, n, labels["server"])
+			}
+		}
+	}
+
+	// Collect replication status metrics
+	if replStats, err := client.GetReplicationStatus(); err == nil {
+		if provider, ok := replStats["provider"]; ok {
+			// Set provider status based on whether we found a provider
+			providerLabels := prometheus.Labels{
+				"server": labels["server"],
+				"provider": provider,
+			}
+			
+			// We assume the provider is up if we can get its config
+			ch <- prometheus.MustNewConstMetric(replicationProviderStatusDesc, prometheus.GaugeValue, 1.0, 
+				providerLabels["server"], providerLabels["provider"])
+			
+			// Check for delay if available
+			if delay, ok := replStats["delay"]; ok {
+				if n, err := strconv.ParseFloat(delay, 64); err == nil {
+					ch <- prometheus.MustNewConstMetric(replicationProviderDelayDesc, prometheus.GaugeValue, n, 
+						providerLabels["server"], providerLabels["provider"])
+				}
+			}
+		}
+	}
+
+	// Collect security related metrics
+	if secStats, err := client.GetSecurityStats(); err == nil {
+		// Authentication success/failure counts (these would typically come from logs or special counters)
+		// For now, we'll use placeholder values if not available in monitor
+		if val, ok := secStats["simple_bind_total"]; ok {
+			if n, err := strconv.ParseFloat(val, 64); err == nil {
+				ch <- prometheus.MustNewConstMetric(securitySimpleBindCountDesc, prometheus.CounterValue, n, labels["server"])
+			}
+		}
+		
+		if val, ok := secStats["sasl_bind_total"]; ok {
+			if n, err := strconv.ParseFloat(val, 64); err == nil {
+				ch <- prometheus.MustNewConstMetric(securitySaslBindCountDesc, prometheus.CounterValue, n, labels["server"])
+			}
+		}
+	}
+
+	// Collect performance related metrics
+	if perfStats, err := client.GetPerformanceStats(); err == nil {
+		// Performance metrics would be calculated as response times during actual operations
+		// For now, we'll expose some counters from the monitor
+		if val, ok := perfStats["read_ops_completed"]; ok {
+			if n, err := strconv.ParseFloat(val, 64); err == nil {
+				opLabels := prometheus.Labels{
+					"server": labels["server"],
+					"operation": "read",
+				}
+				ch <- prometheus.MustNewConstMetric(ldapOperationResponseTimeDesc, prometheus.CounterValue, n, 
+					opLabels["server"], opLabels["operation"])
+			}
+		}
+	}
 }
 
 // parseLDAPTimestampToSeconds converts LDAP timestamp format to seconds since epoch

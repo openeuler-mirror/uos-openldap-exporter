@@ -38,6 +38,26 @@ func (m *MockLDAPClient) CheckHealth() (bool, string) {
 	return args.Bool(0), args.String(1)
 }
 
+func (m *MockLDAPClient) GetTLSStats() (map[string]string, error) {
+	args := m.Called()
+	return args.Get(0).(map[string]string), args.Error(1)
+}
+
+func (m *MockLDAPClient) GetReplicationStatus() (map[string]string, error) {
+	args := m.Called()
+	return args.Get(0).(map[string]string), args.Error(1)
+}
+
+func (m *MockLDAPClient) GetSecurityStats() (map[string]string, error) {
+	args := m.Called()
+	return args.Get(0).(map[string]string), args.Error(1)
+}
+
+func (m *MockLDAPClient) GetPerformanceStats() (map[string]string, error) {
+	args := m.Called()
+	return args.Get(0).(map[string]string), args.Error(1)
+}
+
 func TestOpenLDAPCollector_ConnectError(t *testing.T) {
 	// 准备测试配置
 	cfg := &config.Config{
@@ -138,6 +158,35 @@ func TestOpenLDAPCollector_SuccessfulCollection(t *testing.T) {
 	// Time
 	mockClient.On("SearchMonitor", "cn=Start,cn=Time,cn=Monitor", "monitorTimestamp").Return("20230101000000Z", nil)
 	mockClient.On("SearchMonitor", "cn=Current,cn=Time,cn=Monitor", "monitorTimestamp").Return("20230101010000Z", nil)
+
+	// TLS Stats
+	tlsStats := map[string]string{
+		"tls_connections":        "50",
+		"tls_active_connections": "5",
+		"starttls_success_total": "25",
+		"starttls_failure_total": "2",
+	}
+	mockClient.On("GetTLSStats").Return(tlsStats, nil)
+
+	// Replication Stats
+	replStats := map[string]string{
+		"provider": "ldap://replica.example.com:389",
+		"delay":    "10",
+	}
+	mockClient.On("GetReplicationStatus").Return(replStats, nil)
+
+	// Security Stats
+	secStats := map[string]string{
+		"simple_bind_total": "100",
+		"sasl_bind_total":   "50",
+	}
+	mockClient.On("GetSecurityStats").Return(secStats, nil)
+
+	// Performance Stats
+	perfStats := map[string]string{
+		"read_ops_completed": "200",
+	}
+	mockClient.On("GetPerformanceStats").Return(perfStats, nil)
 
 	// 创建collector
 	collector := New(cfg, log)
