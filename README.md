@@ -22,6 +22,7 @@ uos-openldap-exporter 是一个针对 OpenLDAP 的 Prometheus 监控指标导出
 - 配置验证功能，确保配置项的有效性
 - 支持日志轮转和文件输出
 - 生产级架构设计，支持可测试性和可扩展性
+- 更全面的指标收集，包括SSL/TLS、复制状态、性能和安全相关指标
 
 ## 软件架构
 
@@ -276,6 +277,40 @@ export OPENLDAP_EXPORTER_LOG_LEVEL=debug
 | 指标名称 | 类型 | 含义 |
 |---------|------|-----|
 | openldap_custom_search_result_count | Gauge | 自定义LDAP搜索的结果计数 |
+
+### SSL/TLS 相关指标
+
+| 指标名称 | 类型 | 含义 |
+|---------|------|-----|
+| openldap_tls_connections_total | Counter | 建立的TLS连接总数 |
+| openldap_tls_active_connections | Gauge | 当前活跃的TLS连接数 |
+| openldap_tls_starttls_success_total | Counter | 成功的StartTLS操作总数 |
+| openldap_tls_starttls_failure_total | Counter | 失败的StartTLS操作总数 |
+
+### 复制状态指标
+
+| 指标名称 | 类型 | 含义 |
+|---------|------|-----|
+| openldap_replication_provider_status | Gauge | 复制提供者状态（1=正常，0=异常） |
+| openldap_replication_consumer_status | Gauge | 复制消费者状态（1=正常，0=异常） |
+| openldap_replication_provider_delay_seconds | Gauge | 复制延迟（秒） |
+| openldap_replication_provider_last_update_time_seconds | Gauge | 最后复制更新时间戳 |
+
+### 性能指标
+
+| 指标名称 | 类型 | 含义 |
+|---------|------|-----|
+| openldap_performance_operation_response_time_seconds | Counter | LDAP操作响应时间（秒） |
+
+### 安全相关指标
+
+| 指标名称 | 类型 | 含义 |
+|---------|------|-----|
+| openldap_security_authentication_success_total | Counter | 成功认证总数 |
+| openldap_security_authentication_failure_total | Counter | 失败认证总数 |
+| openldap_security_sasl_bind_total | Counter | SASL绑定操作总数 |
+| openldap_security_simple_bind_total | Counter | 简单绑定操作总数 |
+| openldap_security_strong_auth_total | Counter | 强认证操作总数 |
 
 ## 许可证
 

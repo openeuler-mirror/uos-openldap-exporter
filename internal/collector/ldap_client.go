@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net"
 	"strings"
