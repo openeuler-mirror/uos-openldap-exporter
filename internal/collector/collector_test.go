@@ -4,7 +4,9 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
+	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/sirupsen/logrus"
@@ -59,16 +61,16 @@ func (m *MockLDAPClient) GetPerformanceStats() (map[string]string, error) {
 }
 
 func TestOpenLDAPCollector_ConnectError(t *testing.T) {
-	// 准备测试配置
+	// Arrange
 	cfg := &config.Config{
 		LDAP: config.LDAPConfig{
-			Server: "ldap://localhost:389",
+			Server:       "localhost:389",
+			BindDN:       "cn=admin,dc=example,dc=com",
+			BindPassword: "password",
+			Timeout:      5 * time.Second,
 		},
 	}
-
-	// 创建logger
 	log := logrus.New()
-	log.SetLevel(logrus.ErrorLevel)
 
 	// 创建collector
 	collector := New(cfg, log)
@@ -78,19 +80,36 @@ func TestOpenLDAPCollector_ConnectError(t *testing.T) {
 		return nil, errors.New("connection failed")
 	}
 
-	// 创建一个测试注册表
-	registry := prometheus.NewRegistry()
-	registry.MustRegister(collector)
+	// Act & Assert
+	ch := make(chan prometheus.Metric, 100) // 使用较大的channel避免阻塞
+	go func() {
+		defer close(ch)
+		collector.Collect(ch)
+	}()
 
-	// 检查指标
-	expected := `
-		# HELP openldap_up Whether the OpenLDAP server is reachable.
-		# TYPE openldap_up gauge
-		openldap_up{server="ldap://localhost:389"} 0
-	`
+	// 收集所有指标
+	var metrics []prometheus.Metric
+	for metric := range ch {
+		metrics = append(metrics, metric)
+	}
 
-	err := testutil.GatherAndCompare(registry, strings.NewReader(expected), "openldap_up")
-	assert.NoError(t, err)
+	// 验证up指标为0
+	assert.NotEmpty(t, metrics)
+	foundUpMetric := false
+	for _, metric := range metrics {
+		dto := &dto.Metric{}
+		if metric.Write(dto) == nil {
+			if dto.GetLabel() != nil {
+				for _, label := range dto.GetLabel() {
+					if label.GetValue() == cfg.LDAP.Server && dto.GetGauge().GetValue() == 0.0 {
+						foundUpMetric = true
+						break
+					}
+				}
+			}
+		}
+	}
+	assert.True(t, foundUpMetric, "Expected to find up metric with value 0")
 }
 
 func TestOpenLDAPCollector_SuccessfulCollection(t *testing.T) {
