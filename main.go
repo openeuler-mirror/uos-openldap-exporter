@@ -13,9 +13,10 @@ import (
 )
 
 func main() {
-	log := logger.New()
+	// 修复：logger.New需要参数
+	log := logger.New("info", "text")
 
-	cfg, err := config.LoadConfig("")
+	cfg, err := config.Load("")  // 修复：LoadConfig应该是Load
 	if err != nil {
 		log.Errorf("Failed to load config: %v", err)
 		os.Exit(1)
@@ -39,19 +40,19 @@ func main() {
 
 	collector := collector.New(cfg, log)
 	
-	// 配置并注册所有需要的插件
+	// 修复：获取插件管理器的正确方式
 	pm := collector.GetPluginManager()
 	pm.ConfigurePlugins(cfg.Plugins.Enabled)
 	pm.RegisterPlugin(collector)
-	pm.RegisterPlugin(collector.NewBaseConnectionPlugin())
-	pm.RegisterPlugin(collector.NewMonitorSpecificPlugin())
-	pm.RegisterPlugin(collector.NewSecurityPlugin())
+	
+	// 注册默认插件 - 修复调用方式为独立函数
+	collector.RegisterDefaultPlugins(pm)
 
 	server := server.New(cfg.Web.ListenAddress, cfg.Web.MetricsPath, collector, log)
 
-	if err := cmd.Execute(server); err != nil {
+	// 修复：cmd.Execute不需要参数
+	if err := cmd.Execute(); err != nil {
 		log.Errorf("Server stopped with error: %v", err)
 		os.Exit(1)
 	}
 }
-
