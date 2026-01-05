@@ -73,6 +73,23 @@ log:
   # Compress rotated log files (default: false)
   compress: false
 
+# Plugin configuration (optional)
+# Configure which plugins are enabled and their specific settings
+# If not specified, all available plugins are enabled by default
+plugins:
+  # List of plugins to enable (optional)
+  # When empty or omitted, all plugins are enabled
+  # Examples of possible plugin names:
+  #   - "base_connection": Basic connection and health metrics
+  #   - "monitor_specific": Monitor-specific operational attributes  
+  #   - "security": Security-related metrics and checks
+  #   - "performance": Performance monitoring metrics
+  enabled:
+    # - "base_connection"
+    # - "monitor_specific" 
+    # - "security"
+    # - "performance"
+
 # Custom LDAP searches (optional)
 # Each search counts the number of entries matching the given criteria
 # and exposes the count as a Prometheus metric.
