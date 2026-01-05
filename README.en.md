@@ -18,6 +18,8 @@ The exporter supports various configuration options including LDAP connection pa
 - Provides `/healthz` health check endpoint
 - Supports configuration via YAML file or command-line parameters
 - Structured logging with multiple log levels
+- **Plugin Architecture**: Allows users to develop custom metric collection plugins
+- **Metric Filtering**: Supports enabling/disabling specific metrics on demand
 
 ## Software Architecture
 
@@ -31,6 +33,7 @@ The exporter supports various configuration options including LDAP connection pa
 |  - Connect LDAP  |
 |  - Query Monitor |
 |  - Custom Search |
+|  - Plugin System |
 +------------------+
         ↑
 +------------------+
@@ -73,49 +76,248 @@ web:
 
 log:
   level: "info"
+  format: "text"  # Optional values: "text" or "json", default is "text"
+
+plugins:
+  enabled:  # Specify enabled plugins, leave empty to enable all plugins
+    # - "base_connection"
+    # - "monitor_specific"
+    # - "security"
 
 custom_searches:
   - name: "user_count"
     base_dn: "ou=People,dc=example,dc=com"
     filter: "(objectClass=inetOrgPerson)"
+  - name: "group_count"
+    base_dn: "ou=Groups,dc=example,dc=com"
+    filter: "(objectClass=groupOfNames)"
 ```
 
-Run the exporter:
+### Using Command Line Parameters
+
 ```bash
+# Start with configuration file
 ./uos-openldap-exporter --config.file=config.yaml
+
+# Start with command line parameters
+./uos-openldap-exporter --ldap.server=ldaps://ldap.example.com:636 --web.listen-address=:9331
 ```
 
-### Using Command Line Arguments
+### Plugin System Usage
+
+#### Enable Specific Plugins
+
+Specify plugins to enable in the configuration file:
+
+```yaml
+plugins:
+  enabled:
+    - "base_connection"
+    - "security"
+```
+
+#### Developing Custom Plugins
+
+To develop a custom plugin, you need to implement the `PluginCollector` interface:
+
+```go
+type MyPlugin struct {
+    BasePluginCollector
+    myMetricDesc *prometheus.Desc
+}
+
+func NewMyPlugin() *MyPlugin {
+    return &MyPlugin{
+        myMetricDesc: prometheus.NewDesc(
+            prometheus.BuildFQName(namespace, "my_plugin", "my_metric"),
+            "Description of my metric.",
+            []string{"server"}, nil,
+        ),
+        BasePluginCollector: BasePluginCollector{enabled: true},
+    }
+}
+
+func (p *MyPlugin) Name() string {
+    return "my_plugin"
+}
+
+func (p *MyPlugin) Describe(ch chan<- *prometheus.Desc) {
+    ch <- p.myMetricDesc
+}
+
+func (p *MyPlugin) Collect(ch chan<- prometheus.Metric, client LDAPClientInterface, server string) error {
+    labels := prometheus.Labels{"server": server}
+    ch <- prometheus.MustNewConstMetric(p.myMetricDesc, prometheus.GaugeValue, 42, labels["server"])
+    return nil
+}
+```
+
+Register the plugin in the main program:
+
+```go
+myPlugin := NewMyPlugin()
+collector.GetPluginManager().RegisterPlugin(myPlugin)
+```
+
+### Environment Variables
+
+The following environment variables can be used to configure the exporter:
+
+- `OPENLDAP_EXPORTER_SERVER` - LDAP server address
+- `OPENLDAP_EXPORTER_BIND_DN` - Bind DN
+- `OPENLDAP_EXPORTER_BIND_PASSWORD` - Bind password
+- `OPENLDAP_EXPORTER_LISTEN_ADDRESS` - Listen address
+- `OPENLDAP_EXPORTER_METRICS_PATH` - Metrics path
+- `OPENLDAP_EXPORTER_LOG_LEVEL` - Log level
+
+### Configuration Validation
+
+The configuration file must contain the following requirements:
+
+- `ldap.server` must be set
+- `web.listen_address` and `web.metrics_path` must be set
+- Each item in `custom_searches` must contain name, base_dn, and filter fields
+
+### Health Check
+
+The `/healthz` endpoint provides real health check functionality, which:
+1. Attempts to connect to the configured LDAP server
+2. Starts TLS if StartTLS is configured
+3. Performs bind operation if bind credentials are configured
+4. Performs a lightweight WhoAmI operation to verify the connection
+5. Returns JSON-formatted health status
+
+Example of a healthy response:
+```json
+{
+  "status": "ok"
+}
+```
+
+Example of an unhealthy response:
+```json
+{
+  "status": "error",
+  "ldap": "Failed to connect to LDAP server: ..."
+}
+```
+
+### Configuration Reload
+
+Currently, runtime configuration reload is not supported. The service needs to be restarted for configuration changes to take effect.
+
+## Development Guide
+
+### Project Structure
+
+```
+uos-openldap-exporter/
+├── cmd/                    # Command line interface
+├── internal/
+│   ├── collector/          # Metrics collector
+│   ├── config/             # Configuration management
+│   ├── logger/             # Logging system
+│   └── server/             # HTTP service
+├── scripts/                # Scripts
+├── Dockerfile              # Docker configuration
+├── Makefile                # Build script
+├── README.md               # Project documentation
+└── config.example.yaml     # Configuration example
+```
+
+### Plugin Development
+
+To develop plugins, you need to:
+
+1. Implement the `PluginCollector` interface
+2. Inherit from `BasePluginCollector` to get basic functionality
+3. Define metric descriptors in the `Describe` method
+4. Collect metric data in the `Collect` method
+5. Use the `Name` method to return the plugin's unique identifier
+
+## Build and Test
+
+### Build
 
 ```bash
-./uos-openldap-exporter \
-  --ldap.server=ldaps://ldap.example.com:636 \
-  --ldap.bind-dn="cn=monitor,dc=example,dc=com" \
-  --web.listen-address=:9331
+# Local build
+go build -o uos-openldap-exporter main.go
+
+# Build using Makefile
+make build
+
+# Multi-platform build
+make release
 ```
 
-### Verification
+### Test
 
-Verify the service is running correctly by accessing:
-- Metrics endpoint: http://localhost:9330/metrics
-- Health check: http://localhost:9330/healthz
+```bash
+# Run tests
+make test
 
-## Collected Metrics
+# Test coverage
+make test-cover
 
-- `openldap_up{}`: Whether the LDAP server is reachable (1=OK, 0=Error)
-- `openldap_entries_total{}`: Total number of entries in directory
-- `openldap_monitor_connections_total{}`: Current connection count
-- `openldap_monitor_operations_initiated_total{}`: Number of initiated operations (by operation type)
-- `openldap_custom_search_result_count{}`: Results count of custom searches
+# Security check
+make sec
+```
+
+### Docker Image
+
+```bash
+# Build Docker image
+make docker-build
+
+# Push image
+make docker-push
+```
+
+## Deployment
+
+### Docker Deployment
+
+```bash
+docker run -d -p 9330:9330 \
+  -v /path/to/config.yaml:/etc/openldap-exporter/config.yaml \
+  uos-openldap-exporter:<version>
+```
+
+### Kubernetes Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openldap-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openldap-exporter
+  template:
+    metadata:
+      labels:
+        app: openldap-exporter
+    spec:
+      containers:
+      - name: openldap-exporter
+        image: uos-openldap-exporter:latest
+        ports:
+        - containerPort: 9330
+        volumeMounts:
+        - name: config
+          mountPath: /etc/openldap-exporter
+      volumes:
+      - name: config
+        configMap:
+          name: openldap-exporter-config
+```
 
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch (git checkout -b feature/AmazingFeature)
-3. Commit your changes (git commit -m 'Add some AmazingFeature')
-4. Push to the branch (git push origin feature/AmazingFeature)
-5. Open a pull request
+Feel free to submit issues and pull requests to improve the project.
 
 ## License
 
-See the LICENSE file in the project root for more information.
+This project is licensed under the MulanPSL-2.0 license.

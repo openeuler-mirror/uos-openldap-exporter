@@ -23,6 +23,8 @@ uos-openldap-exporter 是一个针对 OpenLDAP 的 Prometheus 监控指标导出
 - 支持日志轮转和文件输出
 - 生产级架构设计，支持可测试性和可扩展性
 - 更全面的指标收集，包括SSL/TLS、复制状态、性能和安全相关指标
+- **插件架构**：允许用户开发自定义指标收集插件
+- **指标过滤**：支持按需启用/禁用特定指标
 
 ## 软件架构
 
@@ -36,6 +38,7 @@ uos-openldap-exporter 是一个针对 OpenLDAP 的 Prometheus 监控指标导出
 |  - Connect LDAP  |
 |  - Query Monitor |
 |  - Custom Search |
+|  - Plugin System |
 +------------------+
         ↑
 +------------------+
@@ -53,15 +56,21 @@ uos-openldap-exporter 是一个针对 OpenLDAP 的 Prometheus 监控指标导出
    - `internal/logger/` - 日志系统
    - `internal/server/` - HTTP服务
 
-2. **接口抽象**：
+2. **插件架构**：
+   - 通过 `PluginCollector` 接口实现插件系统
+   - 支持动态注册和启用/禁用插件
+   - 提供 `PluginManager` 管理插件生命周期
+   - 插件可独立开发、测试和部署
+
+3. **接口抽象**：
    - 使用接口隔离具体实现，提高代码可测试性
    - LDAP客户端通过接口定义，便于模拟测试
 
-3. **中间件支持**：
+4. **中间件支持**：
    - HTTP服务支持中间件，如日志记录
    - 便于扩展功能，如认证、限流等
 
-4. **生产级特性**：
+5. **生产级特性**：
    - 完善的错误处理机制
    - 请求超时控制防止Slowloris攻击
    - 结构化日志和日志轮转
@@ -109,10 +118,19 @@ log:
   local_time: false  # 是否使用本地时间，默认false(UTC)
   compress: false    # 是否压缩轮转的日志文件，默认false
 
+plugins:
+  enabled:  # 指定启用的插件，留空表示启用所有插件
+    # - "base_connection"
+    # - "monitor_specific"
+    # - "security"
+
 custom_searches:
   - name: "user_count"
     base_dn: "ou=People,dc=example,dc=com"
     filter: "(objectClass=inetOrgPerson)"
+  - name: "group_count"
+    base_dn: "ou=Groups,dc=example,dc=com"
+    filter: "(objectClass=groupOfNames)"
 ```
 
 运行 exporter：
@@ -120,51 +138,88 @@ custom_searches:
 ./uos-openldap-exporter --config.file=config.yaml
 ```
 
-### 命令行参数方式
+### 命令行方式
 
 ```bash
-./uos-openldap-exporter \
-  --ldap.server=ldaps://ldap.example.com:636 \
-  --ldap.bind-dn="cn=monitor,dc=example,dc=com" \
-  --ldap.bind-password="secret" \
-  --ldap.timeout=30s \
-  --web.listen-address=:9331 \
-  --log.level=debug \
-  --log.output=/var/log/openldap-exporter.log \
-  --log.max-size=50
+# 使用配置文件启动
+./uos-openldap-exporter --config.file=config.yaml
+
+# 使用命令行参数启动
+./uos-openldap-exporter --ldap.server=ldaps://ldap.example.com:636 --web.listen-address=:9331
 ```
 
-### 查看版本信息
+### 插件系统使用
 
-```bash
-./uos-openldap-exporter version
+#### 启用特定插件
+
+在配置文件中指定启用的插件：
+
+```yaml
+plugins:
+  enabled:
+    - "base_connection"
+    - "security"
 ```
 
-### 配置优先级
+#### 开发自定义插件
 
-配置项的优先级顺序如下（从高到低）：
-1. 命令行参数
-2. 环境变量
-3. 配置文件
-4. 默认值
+要开发自定义插件，需要实现 `PluginCollector` 接口：
 
-环境变量命名规则：将配置文件中的键名中的点（`.`）替换为下划线（`_`），并加上前缀`OPENLDAP_EXPORTER_`。
-例如：`ldap.server` 对应环境变量 `OPENLDAP_EXPORTER_LDAP_SERVER`
+```go
+type MyPlugin struct {
+    BasePluginCollector
+    myMetricDesc *prometheus.Desc
+}
 
-示例：
-```bash
-export OPENLDAP_EXPORTER_LDAP_SERVER=ldaps://ldap.example.com:636
-export OPENLDAP_EXPORTER_LOG_LEVEL=debug
-./uos-openldap-exporter --web.listen-address=:9331  # 命令行参数优先级最高
+func NewMyPlugin() *MyPlugin {
+    return &MyPlugin{
+        myMetricDesc: prometheus.NewDesc(
+            prometheus.BuildFQName(namespace, "my_plugin", "my_metric"),
+            "Description of my metric.",
+            []string{"server"}, nil,
+        ),
+        BasePluginCollector: BasePluginCollector{enabled: true},
+    }
+}
+
+func (p *MyPlugin) Name() string {
+    return "my_plugin"
+}
+
+func (p *MyPlugin) Describe(ch chan<- *prometheus.Desc) {
+    ch <- p.myMetricDesc
+}
+
+func (p *MyPlugin) Collect(ch chan<- prometheus.Metric, client LDAPClientInterface, server string) error {
+    labels := prometheus.Labels{"server": server}
+    ch <- prometheus.MustNewConstMetric(p.myMetricDesc, prometheus.GaugeValue, 42, labels["server"])
+    return nil
+}
 ```
+
+在主程序中注册插件：
+
+```go
+myPlugin := NewMyPlugin()
+collector.GetPluginManager().RegisterPlugin(myPlugin)
+```
+
+### 环境变量
+
+以下环境变量可用于配置导出器：
+
+- `OPENLDAP_EXPORTER_SERVER` - LDAP服务器地址
+- `OPENLDAP_EXPORTER_BIND_DN` - 绑定DN
+- `OPENLDAP_EXPORTER_BIND_PASSWORD` - 绑定密码
+- `OPENLDAP_EXPORTER_LISTEN_ADDRESS` - 监听地址
+- `OPENLDAP_EXPORTER_METRICS_PATH` - 指标路径
+- `OPENLDAP_EXPORTER_LOG_LEVEL` - 日志级别
 
 ### 配置验证
 
-程序会在启动时对配置进行验证，如果配置不合法会输出错误信息并退出。验证规则包括：
+配置文件必须包含以下要求：
+
 - `ldap.server` 必须设置
-- `ldap.timeout` 必须为正数
-- `log.level` 必须是 debug/info/warn/error 之一
-- `log.format` 必须是 text/json 之一
 - `web.listen_address` 和 `web.metrics_path` 必须设置
 - `custom_searches` 中的每一项都必须包含 name、base_dn 和 filter 字段
 
@@ -198,35 +253,34 @@ export OPENLDAP_EXPORTER_LOG_LEVEL=debug
 
 目前不支持运行时配置重载，需要重启服务才能使配置变更生效。
 
-### 验证运行
+## 开发指南
 
-访问以下端点验证服务是否正常运行：
-- 指标端点: http://localhost:9330/metrics
-- 健康检查: http://localhost:9330/healthz
+### 项目结构
 
-## 命令行参数
+```
+uos-openldap-exporter/
+├── cmd/                    # 命令行接口
+├── internal/
+│   ├── collector/          # 指标收集器
+│   ├── config/             # 配置管理
+│   ├── logger/             # 日志系统
+│   └── server/             # HTTP服务
+├── scripts/                # 脚本
+├── Dockerfile              # Docker配置
+├── Makefile                # 构建脚本
+├── README.md               # 项目文档
+└── config.example.yaml     # 配置示例
+```
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| --config.file | "" | 配置文件路径 |
-| --web.listen-address | :9330 | 监听地址 |
-| --web.metrics-path | /metrics | 指标暴露路径 |
-| --ldap.server | "" | LDAP服务器地址 |
-| --ldap.bind-dn | "" | 绑定DN |
-| --ldap.bind-password | "" | 绑定密码 |
-| --ldap.timeout | 10s | LDAP连接超时时间 |
-| --ldap.start-tls | false | 是否启用StartTLS |
-| --ldap.insecure-skip-verify | false | 是否跳过LDAP服务器证书验证（生产环境不推荐） |
-| --log.level | info | 日志级别（debug, info, warn, error） |
-| --log.format | text | 日志格式（text, json） |
-| --log.output | stdout | 日志输出文件路径 |
-| --log.max-size | 100 | 每个日志文件最大大小(MB) |
-| --log.max-age | 30 | 保留旧日志文件的最大天数 |
-| --log.max-backups | 3 | 保留旧日志文件的最大个数 |
-| --log.local-time | false | 是否使用本地时间 |
-| --log.compress | false | 是否压缩轮转的日志文件 |
+### 插件开发
 
-## 收集的指标
+要开发插件，需要：
+
+1. 实现 `PluginCollector` 接口
+2. 继承 `BasePluginCollector` 以获得基本功能
+3. 在 `Describe` 方法中定义指标描述符
+4. 在 `Collect` 方法中收集指标数据
+5. 使用 `Name` 方法返回插件唯一标识符
 
 ### 基础指标
 
@@ -312,6 +366,89 @@ export OPENLDAP_EXPORTER_LOG_LEVEL=debug
 | openldap_security_simple_bind_total | Counter | 简单绑定操作总数 |
 | openldap_security_strong_auth_total | Counter | 强认证操作总数 |
 
+## 构建与测试
+
+### 构建
+
+```bash
+# 本地构建
+go build -o uos-openldap-exporter main.go
+
+# 使用 Makefile 构建
+make build
+
+# 多平台构建
+make release
+```
+
+### 测试
+
+```bash
+# 运行测试
+make test
+
+# 测试覆盖率
+make test-cover
+
+# 安全检查
+make sec
+```
+
+### Docker 镜像
+
+```bash
+# 构建 Docker 镜像
+make docker-build
+
+# 推送镜像
+make docker-push
+```
+
+## 部署
+
+### Docker 部署
+
+```bash
+docker run -d -p 9330:9330 \
+  -v /path/to/config.yaml:/etc/openldap-exporter/config.yaml \
+  uos-openldap-exporter:<version>
+```
+
+### Kubernetes 部署
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openldap-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openldap-exporter
+  template:
+    metadata:
+      labels:
+        app: openldap-exporter
+    spec:
+      containers:
+      - name: openldap-exporter
+        image: uos-openldap-exporter:latest
+        ports:
+        - containerPort: 9330
+        volumeMounts:
+        - name: config
+          mountPath: /etc/openldap-exporter
+      volumes:
+      - name: config
+        configMap:
+          name: openldap-exporter-config
+```
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request 来改进项目。
+
 ## 许可证
 
-本项目采用 Apache License 2.0 许可证。详情请见 [LICENSE](LICENSE) 文件。
+本项目采用 MulanPSL-2.0 许可证。
