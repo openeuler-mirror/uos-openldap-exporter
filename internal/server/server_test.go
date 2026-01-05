@@ -43,6 +43,26 @@ func (m *MockLDAPClient) CheckHealth() (bool, string) {
 	return args.Bool(0), args.String(1)
 }
 
+func (m *MockLDAPClient) GetTLSStats() (map[string]string, error) {
+	args := m.Called()
+	return args.Get(0).(map[string]string), args.Error(1)
+}
+
+func (m *MockLDAPClient) GetReplicationStatus() (map[string]string, error) {
+	args := m.Called()
+	return args.Get(0).(map[string]string), args.Error(1)
+}
+
+func (m *MockLDAPClient) GetSecurityStats() (map[string]string, error) {
+	args := m.Called()
+	return args.Get(0).(map[string]string), args.Error(1)
+}
+
+func (m *MockLDAPClient) GetPerformanceStats() (map[string]string, error) {
+	args := m.Called()
+	return args.Get(0).(map[string]string), args.Error(1)
+}
+
 func TestNew(t *testing.T) {
 	// Arrange
 	cfg := &config.Config{
@@ -223,6 +243,10 @@ func TestServer_Run(t *testing.T) {
 	mockClient.On("CheckHealth").Return(true, "").Maybe()
 	mockClient.On("SearchCount", "", "(objectClass=*)").Return(0, nil).Maybe()
 	mockClient.On("SearchMonitor", mock.Anything, mock.Anything).Return("0", nil).Maybe()
+	mockClient.On("GetTLSStats").Return(map[string]string{}, nil).Maybe()
+	mockClient.On("GetReplicationStatus").Return(map[string]string{}, nil).Maybe()
+	mockClient.On("GetSecurityStats").Return(map[string]string{}, nil).Maybe()
+	mockClient.On("GetPerformanceStats").Return(map[string]string{}, nil).Maybe()
 
 	// 设置collector使用mock客户端
 	coll.SetLDAPClientCreatorForTest(func(cfg *config.LDAPConfig, logger *logrus.Logger) (collector.LDAPClientInterface, error) {
