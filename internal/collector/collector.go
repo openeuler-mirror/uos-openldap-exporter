@@ -164,6 +164,17 @@ var (
 		prometheus.BuildFQName(namespace, "security", "strong_auth_total"),
 		"Total number of strong authentication operations.",
 		[]string{"server"}, nil)
+	
+	// Security and Performance stat descriptors
+	securityStatDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "security", "statistics"),
+		"Security related statistics.",
+		[]string{"server", "statistic"}, nil)
+
+	performanceStatDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "performance", "statistics"),
+		"Performance related statistics.",
+		[]string{"server", "statistic"}, nil)
 )
 
 // OpenLDAPCollector implements the prometheus.Collector interface
@@ -225,63 +236,12 @@ func (c *OpenLDAPCollector) SetLDAPClientCreatorForTest(creator func(*config.LDA
 // RegisterDefaultPlugins 注册默认插件
 func (c *OpenLDAPCollector) RegisterDefaultPlugins(pm *PluginManager) {
 	// 注册内置插件
-	plugins := GetDefaultPlugins(c.logger)
-	for _, plugin := range plugins {
-		pm.RegisterPlugin(plugin)
-	}
+	RegisterDefaultPlugins(pm)
 }
 
 // Name 返回插件的唯一名称
 func (c *OpenLDAPCollector) Name() string {
 	return "openldap_base_collector"
-}
-
-// Describe 描述插件提供的指标
-func (c *OpenLDAPCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- upDesc
-	ch <- entriesTotalDesc
-	ch <- monitorCurrentConnDesc
-	ch <- monitorTotalConnDesc
-	ch <- monitorMaxConnDesc
-	ch <- monitorActiveOpsDesc
-	ch <- monitorPendingOpsDesc
-	ch <- monitorOpsInitDesc
-	ch <- monitorOpsCompletedDesc
-	ch <- monitorOpsWaitingDesc
-	ch <- monitorStatDesc
-	ch <- customSearchDesc
-	ch <- threadsDesc
-	ch <- waitersDesc
-	ch <- timeDesc
-	// SSL/TLS related metrics
-	ch <- tlsConnectionsDesc
-	ch <- tlsActiveConnectionsDesc
-	ch <- startTlsSuccessDesc
-	ch <- startTlsFailureDesc
-	// Replication status metrics
-	ch <- replicationProviderStatusDesc
-	ch <- replicationConsumerStatusDesc
-	ch <- replicationProviderDelayDesc
-	ch <- replicationProviderLastUpdateDesc
-	// Security metrics
-	ch <- securityStatDesc
-	// Performance metrics
-	ch <- performanceStatDesc
-
-	// Also describe metrics from plugins
-	c.pluginManager.DescribeAll(ch)
-}
-
-// Enabled 检查插件是否启用
-func (c *OpenLDAPCollector) Enabled() bool {
-	// 主收集器始终启用
-	return true
-}
-
-// SetEnabled 设置插件是否启用（主收集器不支持禁用）
-func (c *OpenLDAPCollector) SetEnabled(enabled bool) {
-	// 主收集器不能被禁用
-	c.logger.Warn("Cannot disable the main OpenLDAP collector")
 }
 
 // Describe implements the prometheus.Collector interface
@@ -452,8 +412,10 @@ func (c *OpenLDAPCollector) CollectWithClient(ch chan<- prometheus.Metric, clien
 	timeTypes := []string{"current", "uptime"}
 	for _, ttype := range timeTypes {
 		if val, err := ldapClient.SearchMonitor("cn=Time,cn=Monitor", "monitorTimestamp-"+ttype); err == nil {
-			// Convert LDAP timestamp to Unix timestamp for comparison
-			ch <- prometheus.MustNewConstMetric(timeDesc, prometheus.GaugeValue, float64(time.Now().Unix()), labels["server"], ttype)
+			// Convert LDAP timestamp to Unix timestamp
+			if unixTime, err := parseLDAPTimestampToSeconds(val); err == nil {
+				ch <- prometheus.MustNewConstMetric(timeDesc, prometheus.GaugeValue, unixTime, labels["server"], ttype)
+			}
 		}
 	}
 
@@ -529,8 +491,8 @@ func (c *OpenLDAPCollector) CollectWithClient(ch chan<- prometheus.Metric, clien
 		}
 	}
 
-	// Custom searches
-	for _, search := range c.config.LDAP.CustomSearches {
+	// Custom searches - use the top-level config instead of LDAP config
+	for _, search := range c.config.CustomSearches {
 		if count, err := ldapClient.SearchCount(search.BaseDN, search.Filter); err == nil {
 			ch <- prometheus.MustNewConstMetric(customSearchDesc, prometheus.GaugeValue, float64(count), labels["server"], search.Name)
 		} else {
