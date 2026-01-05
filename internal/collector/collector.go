@@ -168,26 +168,38 @@ var (
 
 // OpenLDAPCollector implements the prometheus.Collector interface
 type OpenLDAPCollector struct {
-	config *config.Config
-	logger *logrus.Logger
+	config       *config.Config
+	logger       *logrus.Logger
+	pluginManager *PluginManager
 	// ldapClientCreator 是一个函数，用于创建LDAP客户端，主要用于测试
 	ldapClientCreator func(*config.LDAPConfig, *logrus.Logger) (LDAPClientInterface, error)
 }
 
 // New creates a new OpenLDAPCollector
 func New(cfg *config.Config, logger *logrus.Logger) *OpenLDAPCollector {
-	return &OpenLDAPCollector{
-		config: cfg,
-		logger: logger,
+	collector := &OpenLDAPCollector{
+		config:            cfg,
+		logger:            logger,
+		pluginManager:     NewPluginManager(logger, cfg),
 		ldapClientCreator: func(cfg *config.LDAPConfig, logger *logrus.Logger) (LDAPClientInterface, error) {
 			return NewLDAPClient(cfg, logger)
 		},
 	}
+	
+	// 配置插件
+	collector.pluginManager.ConfigurePlugins(cfg.Plugins.Enabled)
+	
+	return collector
 }
 
 // GetLDAPConfig returns the LDAP configuration
 func (c *OpenLDAPCollector) GetLDAPConfig() *config.LDAPConfig {
 	return &c.config.LDAP
+}
+
+// GetPluginManager 返回插件管理器
+func (c *OpenLDAPCollector) GetPluginManager() *PluginManager {
+	return c.pluginManager
 }
 
 // CheckHealth performs a health check using existing LDAP client
@@ -245,6 +257,9 @@ func (c *OpenLDAPCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- securitySaslBindCountDesc
 	ch <- securitySimpleBindCountDesc
 	ch <- securityStrongAuthCountDesc
+	
+	// Also describe metrics from plugins
+	c.pluginManager.DescribeAll(ch)
 }
 
 // Collect implements the prometheus.Collector interface
@@ -474,6 +489,9 @@ func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
 			}
 		}
 	}
+	
+	// Collect metrics from plugins
+	c.pluginManager.CollectAll(ch, client, labels["server"])
 }
 
 // parseLDAPTimestampToSeconds converts LDAP timestamp format to seconds since epoch
