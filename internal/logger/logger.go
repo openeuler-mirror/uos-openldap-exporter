@@ -58,7 +58,7 @@ func NewWithConfig(config Config) *logrus.Logger {
 
 		// Ensure log directory exists
 		dir := filepath.Dir(config.Output)
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0750); err != nil {
 			log.Errorf("Failed to create log directory '%s': %v", dir, err)
 		}
 
