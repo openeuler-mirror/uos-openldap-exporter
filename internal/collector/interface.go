@@ -13,4 +13,16 @@ type LDAPClientInterface interface {
 
 	// CheckHealth 执行健康检查
 	CheckHealth() (bool, string)
+
+	// GetTLSStats 获取TLS连接统计信息
+	GetTLSStats() (map[string]string, error)
+
+	// GetReplicationStatus 获取复制状态
+	GetReplicationStatus() (map[string]string, error)
+
+	// GetSecurityStats 获取安全相关统计
+	GetSecurityStats() (map[string]string, error)
+
+	// GetPerformanceStats 获取性能相关统计
+	GetPerformanceStats() (map[string]string, error)
 }

@@ -90,6 +90,80 @@ var (
 		prometheus.BuildFQName(namespace, "monitor", "time_seconds"),
 		"System time metrics from LDAP server.",
 		[]string{"server", "type"}, nil)
+
+	// SSL/TLS related metrics
+	tlsConnectionsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "tls", "connections_total"),
+		"Total number of TLS connections established.",
+		[]string{"server"}, nil)
+
+	tlsActiveConnectionsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "tls", "active_connections"),
+		"Number of currently active TLS connections.",
+		[]string{"server"}, nil)
+
+	startTlsSuccessDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "tls", "starttls_success_total"),
+		"Total number of successful StartTLS operations.",
+		[]string{"server"}, nil)
+
+	startTlsFailureDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "tls", "starttls_failure_total"),
+		"Total number of failed StartTLS operations.",
+		[]string{"server"}, nil)
+
+	// Replication status metrics
+	replicationProviderStatusDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "replication", "provider_status"),
+		"Status of replication provider (1=up, 0=down).",
+		[]string{"server", "provider"}, nil)
+
+	replicationConsumerStatusDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "replication", "consumer_status"),
+		"Status of replication consumer (1=up, 0=down).",
+		[]string{"server", "consumer"}, nil)
+
+	replicationProviderDelayDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "replication", "provider_delay_seconds"),
+		"Replication delay in seconds.",
+		[]string{"server", "provider"}, nil)
+
+	replicationProviderLastUpdateDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "replication", "provider_last_update_time_seconds"),
+		"Timestamp of last replication update.",
+		[]string{"server", "provider"}, nil)
+
+	// Performance metrics
+	ldapOperationResponseTimeDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "performance", "operation_response_time_seconds"),
+		"Response time of LDAP operations in seconds.",
+		[]string{"server", "operation"}, nil)
+
+	// Security related metrics
+	authenticationSuccessDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "security", "authentication_success_total"),
+		"Total number of successful authentications.",
+		[]string{"server"}, nil)
+
+	authenticationFailureDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "security", "authentication_failure_total"),
+		"Total number of failed authentications.",
+		[]string{"server"}, nil)
+
+	securitySaslBindCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "security", "sasl_bind_total"),
+		"Total number of SASL bind operations.",
+		[]string{"server"}, nil)
+
+	securitySimpleBindCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "security", "simple_bind_total"),
+		"Total number of simple bind operations.",
+		[]string{"server"}, nil)
+
+	securityStrongAuthCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "security", "strong_auth_total"),
+		"Total number of strong authentication operations.",
+		[]string{"server"}, nil)
 )
 
 // OpenLDAPCollector implements the prometheus.Collector interface
@@ -153,6 +227,24 @@ func (c *OpenLDAPCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- threadsDesc
 	ch <- waitersDesc
 	ch <- timeDesc
+	// SSL/TLS related metrics
+	ch <- tlsConnectionsDesc
+	ch <- tlsActiveConnectionsDesc
+	ch <- startTlsSuccessDesc
+	ch <- startTlsFailureDesc
+	// Replication status metrics
+	ch <- replicationProviderStatusDesc
+	ch <- replicationConsumerStatusDesc
+	ch <- replicationProviderDelayDesc
+	ch <- replicationProviderLastUpdateDesc
+	// Performance metrics
+	ch <- ldapOperationResponseTimeDesc
+	// Security related metrics
+	ch <- authenticationSuccessDesc
+	ch <- authenticationFailureDesc
+	ch <- securitySaslBindCountDesc
+	ch <- securitySimpleBindCountDesc
+	ch <- securityStrongAuthCountDesc
 }
 
 // Collect implements the prometheus.Collector interface
