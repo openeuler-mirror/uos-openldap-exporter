@@ -43,14 +43,17 @@ func main() {
 	// 修复：获取插件管理器的正确方式
 	pm := collector.GetPluginManager()
 	pm.ConfigurePlugins(cfg.Plugins.Enabled)
-	pm.RegisterPlugin(collector)
 	
-	// 注册默认插件 - 修复调用方式为独立函数
+	// 修复：传递正确的参数到RegisterPlugin方法
+	pm.RegisterPlugin(collector)
+
+	// 修复：注册默认插件 - 修复调用方式为独立函数
 	collector.RegisterDefaultPlugins(pm)
 
-	server := server.New(cfg.Web.ListenAddress, cfg.Web.MetricsPath, collector, log)
+	// 修复：删除未使用的server变量声明
+	srv := server.New(cfg.Web.ListenAddress, cfg.Web.MetricsPath, collector, log)
 
-	// 修复：cmd.Execute不需要参数
+	// 修复：cmd.Execute不需要参数，因为服务器启动逻辑在cobra命令中定义
 	if err := cmd.Execute(); err != nil {
 		log.Errorf("Server stopped with error: %v", err)
 		os.Exit(1)
