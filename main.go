@@ -51,7 +51,7 @@ func main() {
 	collector.RegisterDefaultPlugins(pm)
 
 	// 修复：删除未使用的server变量声明
-	srv := server.New(cfg.Web.ListenAddress, cfg.Web.MetricsPath, collector, log)
+	server.New(cfg.Web.ListenAddress, cfg.Web.MetricsPath, collector, log)
 
 	// 修复：cmd.Execute不需要参数，因为服务器启动逻辑在cobra命令中定义
 	if err := cmd.Execute(); err != nil {
