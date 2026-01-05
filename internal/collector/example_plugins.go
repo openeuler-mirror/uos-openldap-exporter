@@ -2,8 +2,9 @@ package collector
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
 )
+
+const namespace = "ldap"
 
 // BaseConnectionPlugin 基础连接指标插件
 type BaseConnectionPlugin struct {
