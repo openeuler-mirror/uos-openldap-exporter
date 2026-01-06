@@ -290,7 +290,9 @@ func (c *OpenLDAPCollector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements the prometheus.Collector interface
 func (c *OpenLDAPCollector) Collect(ch chan<- prometheus.Metric) {
-	c.collectWithClient(ch, nil, "")
+	if err := c.collectWithClient(ch, nil, ""); err != nil {
+		c.logger.Errorf("Error during metrics collection: %v", err)
+	}
 }
 
 // CollectWithClient implements the PluginCollector interface
