@@ -6,8 +6,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"gitee.com/openeuler/uos-openldap-exporter/cmd"
-	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
 	"gitee.com/openeuler/uos-openldap-exporter/internal/collector"
+	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
 	"gitee.com/openeuler/uos-openldap-exporter/internal/logger"
 	"gitee.com/openeuler/uos-openldap-exporter/internal/server"
 )
@@ -15,7 +15,7 @@ import (
 func main() {
 	log := logger.New("info", "text")
 
-	cfg, err := config.Load("") 
+	cfg, err := config.Load("")
 	if err != nil {
 		log.Errorf("Failed to load config: %v", err)
 		os.Exit(1)
@@ -38,11 +38,11 @@ func main() {
 	}
 
 	ldapCollector := collector.New(cfg, log)
-	
+
 	// 配置并注册所有需要的插件
 	pm := ldapCollector.GetPluginManager()
 	pm.ConfigurePlugins(cfg.Plugins.Enabled)
-	
+
 	// 使用适配器注册主收集器作为插件
 	pluginAdapter := collector.NewPluginAdapter(ldapCollector) // 这是包级函数调用
 	pm.RegisterPlugin(pluginAdapter)

@@ -1,26 +1,25 @@
 package collector
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
 	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 )
-
 
 // PluginCollector 接口定义插件收集器的基本方法
 type PluginCollector interface {
 	// Name 返回插件的唯一名称
 	Name() string
-	
+
 	// Describe 描述插件提供的指标
 	Describe(ch chan<- *prometheus.Desc)
-	
+
 	// Collect 收集插件的指标
 	Collect(ch chan<- prometheus.Metric, client LDAPClientInterface, server string) error
-	
+
 	// Enabled 检查插件是否启用
 	Enabled() bool
-	
+
 	// SetEnabled 设置插件是否启用
 	SetEnabled(enabled bool)
 }

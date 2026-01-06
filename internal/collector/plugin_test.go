@@ -3,10 +3,10 @@ package collector
 import (
 	"testing"
 
+	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
 )
 
 func TestPluginManager(t *testing.T) {
