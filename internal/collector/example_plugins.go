@@ -118,19 +118,19 @@ func (p *SecurityPlugin) Describe(ch chan<- *prometheus.Desc) {
 // Collect 收集插件的指标
 func (p *SecurityPlugin) Collect(ch chan<- prometheus.Metric, client LDAPClientInterface, server string) error {
 	labels := prometheus.Labels{"server": server}
-	
+
 	// 示例：收集失败绑定尝试数
 	ch <- prometheus.MustNewConstMetric(p.failedBindAttemptsDesc, prometheus.CounterValue, 0, labels["server"])
-	
+
 	// 示例：收集SSL/TLS信息
 	sslLabels := prometheus.Labels{
 		"server":   server,
 		"cipher":   "TLS_AES_256_GCM_SHA384",
 		"protocol": "TLSv1.3",
 	}
-	ch <- prometheus.MustNewConstMetric(p.sslCipherDesc, prometheus.GaugeValue, 1, 
+	ch <- prometheus.MustNewConstMetric(p.sslCipherDesc, prometheus.GaugeValue, 1,
 		sslLabels["server"], sslLabels["cipher"], sslLabels["protocol"])
-	
+
 	return nil
 }
 

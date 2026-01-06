@@ -164,7 +164,7 @@ var (
 		prometheus.BuildFQName(namespace, "security", "strong_auth_total"),
 		"Total number of strong authentication operations.",
 		[]string{"server"}, nil)
-	
+
 	// Security and Performance stat descriptors
 	securityStatDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "security", "statistics"),
@@ -179,8 +179,8 @@ var (
 
 // OpenLDAPCollector implements the prometheus.Collector interface
 type OpenLDAPCollector struct {
-	config       *config.Config
-	logger       *logrus.Logger
+	config        *config.Config
+	logger        *logrus.Logger
 	pluginManager *PluginManager
 	// ldapClientCreator 是一个函数，用于创建LDAP客户端，主要用于测试
 	ldapClientCreator func(*config.LDAPConfig, *logrus.Logger) (LDAPClientInterface, error)
@@ -189,21 +189,21 @@ type OpenLDAPCollector struct {
 // New creates a new OpenLDAPCollector
 func New(cfg *config.Config, logger *logrus.Logger) *OpenLDAPCollector {
 	collector := &OpenLDAPCollector{
-		config:            cfg,
-		logger:            logger,
-		pluginManager:     NewPluginManager(logger, cfg),
+		config:        cfg,
+		logger:        logger,
+		pluginManager: NewPluginManager(logger, cfg),
 		ldapClientCreator: func(cfg *config.LDAPConfig, logger *logrus.Logger) (LDAPClientInterface, error) {
 			return NewLDAPClient(cfg, logger)
 		},
 	}
-	
+
 	// 创建适配器并将基础收集器注册为插件
 	adapter := NewPluginAdapter(collector)
 	collector.pluginManager.RegisterPlugin(adapter)
-	
+
 	// 配置插件
 	collector.pluginManager.ConfigurePlugins(cfg.Plugins.Enabled)
-	
+
 	return collector
 }
 
@@ -283,7 +283,7 @@ func (c *OpenLDAPCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- securitySaslBindCountDesc
 	ch <- securitySimpleBindCountDesc
 	ch <- securityStrongAuthCountDesc
-	
+
 	// Also describe metrics from plugins
 	c.pluginManager.DescribeAll(ch)
 }
