@@ -43,9 +43,6 @@ func main() {
 	pm := ldapCollector.GetPluginManager()
 	pm.ConfigurePlugins(cfg.Plugins.Enabled)
 
-	// 使用适配器注册主收集器作为插件
-	pluginAdapter := collector.NewPluginAdapter(ldapCollector) // 这是包级函数调用
-	pm.RegisterPlugin(pluginAdapter)
 
 	// 注册默认插件
 	ldapCollector.RegisterDefaultPlugins(pm)
