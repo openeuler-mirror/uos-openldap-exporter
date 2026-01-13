@@ -78,10 +78,10 @@ func (pm *PluginManager) ListPlugins() []string {
 
 // ConfigurePlugins 根据配置启用/禁用插件
 func (pm *PluginManager) ConfigurePlugins(enabledPlugins []string) {
-	// 如果没有指定启用的插件，则启用所有插件
+	// 如果没有指定启用的插件，则禁用所有插件
 	if len(enabledPlugins) == 0 {
 		for _, plugin := range pm.plugins {
-			plugin.SetEnabled(true)
+			plugin.SetEnabled(false)
 		}
 		return
 	}
