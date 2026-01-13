@@ -154,7 +154,7 @@ func TestOpenLDAPCollector_SuccessfulCollection(t *testing.T) {
 	// cn=Operations,cn=Monitor
 	mockClient.On("SearchMonitor", "cn=Operations,cn=Monitor", "monitorOpActive").Return("2", nil)
 	mockClient.On("SearchMonitor", "cn=Operations,cn=Monitor", "monitorOpPending").Return("1", nil)
-	
+
 	// Operations initiated/completed/waiting - mock the specific calls that are made in the actual code
 	opTypes := []string{"bind", "unbind", "search", "compare", "modify", "modrdn", "add", "delete", "abandon"}
 	for _, opType := range opTypes {
@@ -165,20 +165,20 @@ func TestOpenLDAPCollector_SuccessfulCollection(t *testing.T) {
 
 	// Statistics - mock the specific call made in the actual code
 	mockClient.On("SearchMonitor", "cn=Statistics,cn=Monitor", "monitorCounter").Return("100", nil)
-	
+
 	// Thread pool stats
 	threadStates := []string{"active", "idle", "max", "starting", "rdn", "wakeup"}
 	for _, state := range threadStates {
 		mockClient.On("SearchMonitor", "cn=ThreadPool,cn=Monitor", "nBackload"+state).Return("1", nil)
 	}
-	
+
 	// Waiters
 	mockClient.On("SearchMonitor", "cn=Waiters,cn=Monitor", "monitorCounter").Return("0", nil)
-	
+
 	// Time metrics
 	mockClient.On("SearchMonitor", "cn=Time,cn=Monitor", "monitorTimestamp-current").Return("20230101010000Z", nil)
 	mockClient.On("SearchMonitor", "cn=Time,cn=Monitor", "monitorTimestamp-uptime").Return("20230101000000Z", nil)
-	
+
 	// STARTTLS metrics
 	mockClient.On("SearchMonitor", "cn=Statistics,cn=Monitor", "monitorCounter-starttls_success").Return("25", nil)
 	mockClient.On("SearchMonitor", "cn=Statistics,cn=Monitor", "monitorCounter-starttls_failure").Return("2", nil)

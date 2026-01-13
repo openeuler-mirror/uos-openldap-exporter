@@ -43,7 +43,6 @@ func main() {
 	pm := ldapCollector.GetPluginManager()
 	pm.ConfigurePlugins(cfg.Plugins.Enabled)
 
-
 	// 注册默认插件
 	ldapCollector.RegisterDefaultPlugins(pm)
 
