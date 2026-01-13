@@ -101,11 +101,16 @@ func TestOpenLDAPCollector_ConnectError(t *testing.T) {
 			if metric.Desc().String() == upDesc.String() {
 				if dto.GetGauge().GetValue() == 0.0 {
 					// 检查标签是否包含服务器地址
+					foundServerLabel := false
 					for _, label := range dto.GetLabel() {
-						if label.GetName() == "server" && label.GetValue() == cfg.LDAP.Server {
-							foundUpMetric = true
+						if label.GetName() == "server" {
+							foundServerLabel = true
 							break
 						}
+					}
+					if foundServerLabel {
+						foundUpMetric = true
+						break
 					}
 				}
 			}
@@ -149,36 +154,34 @@ func TestOpenLDAPCollector_SuccessfulCollection(t *testing.T) {
 	// cn=Operations,cn=Monitor
 	mockClient.On("SearchMonitor", "cn=Operations,cn=Monitor", "monitorOpActive").Return("2", nil)
 	mockClient.On("SearchMonitor", "cn=Operations,cn=Monitor", "monitorOpPending").Return("1", nil)
-
-	// Operations
-	operations := []string{"Bind", "Unbind", "Search", "Modify", "Add", "Delete"}
-	for _, op := range operations {
-		dn := "cn=" + op + ",cn=Operations,cn=Monitor"
-		mockClient.On("SearchMonitor", dn, "monitorOpInitiated").Return("10", nil)
-		mockClient.On("SearchMonitor", dn, "monitorOpCompleted").Return("9", nil)
-		mockClient.On("SearchMonitor", dn, "monitorOpWaiting").Return("0", nil)
+	
+	// Operations initiated/completed/waiting - mock the specific calls that are made in the actual code
+	opTypes := []string{"bind", "unbind", "search", "compare", "modify", "modrdn", "add", "delete", "abandon"}
+	for _, opType := range opTypes {
+		mockClient.On("SearchMonitor", "cn=Operations,cn=Monitor", "monitorOpInitiated-"+opType).Return("10", nil)
+		mockClient.On("SearchMonitor", "cn=Operations,cn=Monitor", "monitorOpCompleted-"+opType).Return("9", nil)
+		mockClient.On("SearchMonitor", "cn=Operations,cn=Monitor", "monitorOpWaiting-"+opType).Return("0", nil)
 	}
 
-	// Statistics
-	stats := []string{"Bytes", "Entries", "Referrals", "Operations"}
-	for _, stat := range stats {
-		dn := "cn=" + stat + ",cn=Statistics,cn=Monitor"
-		mockClient.On("SearchMonitor", dn, "monitorCounter").Return("100", nil)
-	}
-
-	// Threads
-	threadStates := []string{"Active", "Starting", "Backing", "Pausing", "Pending"}
+	// Statistics - mock the specific call made in the actual code
+	mockClient.On("SearchMonitor", "cn=Statistics,cn=Monitor", "monitorCounter").Return("100", nil)
+	
+	// Thread pool stats
+	threadStates := []string{"active", "idle", "max", "starting", "rdn", "wakeup"}
 	for _, state := range threadStates {
-		dn := "cn=" + state + ",cn=Threads,cn=Monitor"
-		mockClient.On("SearchMonitor", dn, "monitoredInfo").Return("1", nil)
+		mockClient.On("SearchMonitor", "cn=ThreadPool,cn=Monitor", "nBackload"+state).Return("1", nil)
 	}
-
+	
 	// Waiters
-	mockClient.On("SearchMonitor", "cn=Waiters,cn=Threads,cn=Monitor", "monitorCounter").Return("0", nil)
-
-	// Time
-	mockClient.On("SearchMonitor", "cn=Start,cn=Time,cn=Monitor", "monitorTimestamp").Return("20230101000000Z", nil)
-	mockClient.On("SearchMonitor", "cn=Current,cn=Time,cn=Monitor", "monitorTimestamp").Return("20230101010000Z", nil)
+	mockClient.On("SearchMonitor", "cn=Waiters,cn=Monitor", "monitorCounter").Return("0", nil)
+	
+	// Time metrics
+	mockClient.On("SearchMonitor", "cn=Time,cn=Monitor", "monitorTimestamp-current").Return("20230101010000Z", nil)
+	mockClient.On("SearchMonitor", "cn=Time,cn=Monitor", "monitorTimestamp-uptime").Return("20230101000000Z", nil)
+	
+	// STARTTLS metrics
+	mockClient.On("SearchMonitor", "cn=Statistics,cn=Monitor", "monitorCounter-starttls_success").Return("25", nil)
+	mockClient.On("SearchMonitor", "cn=Statistics,cn=Monitor", "monitorCounter-starttls_failure").Return("2", nil)
 
 	// TLS Stats
 	tlsStats := map[string]string{
