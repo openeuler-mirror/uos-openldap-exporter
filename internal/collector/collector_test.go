@@ -97,11 +97,15 @@ func TestOpenLDAPCollector_ConnectError(t *testing.T) {
 	for _, metric := range metrics {
 		dto := &dto.Metric{}
 		if metric.Write(dto) == nil {
-			if dto.GetLabel() != nil {
-				for _, label := range dto.GetLabel() {
-					if label.GetValue() == cfg.LDAP.Server && dto.GetGauge().GetValue() == 0.0 {
-						foundUpMetric = true
-						break
+			// 检查指标名称是否为up，并且值为0
+			if metric.Desc().String() == upDesc.String() {
+				if dto.GetGauge().GetValue() == 0.0 {
+					// 检查标签是否包含服务器地址
+					for _, label := range dto.GetLabel() {
+						if label.GetName() == "server" && label.GetValue() == cfg.LDAP.Server {
+							foundUpMetric = true
+							break
+						}
 					}
 				}
 			}
