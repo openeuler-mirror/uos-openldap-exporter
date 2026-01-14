@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -135,17 +134,12 @@ func TestHandleHealthCheckSuccess(t *testing.T) {
 	}
 
 	coll := collector.New(cfg, logger)
-
-	// 使用测试辅助函数设置ldapClientCreator
-	mockClient := new(MockLDAPClient)
-	mockClient.On("Close").Return()
-	mockClient.On("CheckHealth").Return(true, "")
-
-	coll.SetLDAPClientCreatorForTest(func(cfg *config.LDAPConfig, logger *logrus.Logger) (collector.LDAPClientInterface, error) {
-		return mockClient, nil
-	})
-
 	server := New(":8080", "/metrics", coll, logger)
+	
+	// 替换healthCheckFunc为模拟函数
+	server.healthCheckFunc = func(cfg *config.LDAPConfig, logger *logrus.Logger) (bool, string) {
+		return true, "success"
+	}
 
 	// Create request and response recorder
 	req := httptest.NewRequest("GET", "/healthz", nil)
@@ -179,13 +173,12 @@ func TestHandleHealthCheckFailure(t *testing.T) {
 	}
 
 	coll := collector.New(cfg, logger)
-
-	// 使用测试辅助函数设置ldapClientCreator
-	coll.SetLDAPClientCreatorForTest(func(cfg *config.LDAPConfig, logger *logrus.Logger) (collector.LDAPClientInterface, error) {
-		return nil, errors.New("connection failed")
-	})
-
 	server := New(":8080", "/metrics", coll, logger)
+	
+	// 替换healthCheckFunc为模拟函数
+	server.healthCheckFunc = func(cfg *config.LDAPConfig, logger *logrus.Logger) (bool, string) {
+		return false, "connection failed"
+	}
 
 	// Create request and response recorder
 	req := httptest.NewRequest("GET", "/healthz", nil)
@@ -237,22 +230,6 @@ func TestServer_Run(t *testing.T) {
 	// 创建collector
 	coll := collector.New(cfg, logger)
 
-	// 创建mock LDAP客户端
-	mockClient := new(MockLDAPClient)
-	mockClient.On("Close").Return()
-	mockClient.On("CheckHealth").Return(true, "").Maybe()
-	mockClient.On("SearchCount", "", "(objectClass=*)").Return(0, nil).Maybe()
-	mockClient.On("SearchMonitor", mock.Anything, mock.Anything).Return("0", nil).Maybe()
-	mockClient.On("GetTLSStats").Return(map[string]string{}, nil).Maybe()
-	mockClient.On("GetReplicationStatus").Return(map[string]string{}, nil).Maybe()
-	mockClient.On("GetSecurityStats").Return(map[string]string{}, nil).Maybe()
-	mockClient.On("GetPerformanceStats").Return(map[string]string{}, nil).Maybe()
-
-	// 设置collector使用mock客户端
-	coll.SetLDAPClientCreatorForTest(func(cfg *config.LDAPConfig, logger *logrus.Logger) (collector.LDAPClientInterface, error) {
-		return mockClient, nil
-	})
-
 	// 创建listener来获取随机端口
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	assert.NoError(t, err)
@@ -262,6 +239,11 @@ func TestServer_Run(t *testing.T) {
 
 	// 创建服务器实例
 	server := New(addr, "/metrics", coll, logger)
+	
+	// 替换healthCheckFunc为模拟函数
+	server.healthCheckFunc = func(cfg *config.LDAPConfig, logger *logrus.Logger) (bool, string) {
+		return true, "success"
+	}
 
 	// 在goroutine中启动服务器
 	go func() {

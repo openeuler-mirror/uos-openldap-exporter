@@ -21,6 +21,8 @@ type Server struct {
 	collector   *collector.OpenLDAPCollector
 	logger      *logrus.Logger
 	ldapConfig  *config.LDAPConfig // Store LDAP config for health checks
+	// 添加一个健康检查函数字段，以便于测试
+	healthCheckFunc func(*config.LDAPConfig, *logrus.Logger) (bool, string)
 }
 
 // HealthResponse represents the health check response structure
@@ -33,11 +35,12 @@ type HealthResponse struct {
 func New(addr, metricsPath string, coll *collector.OpenLDAPCollector, logger *logrus.Logger) *Server {
 	// Extract LDAP config from collector for health checks
 	return &Server{
-		addr:        addr,
-		metricsPath: metricsPath,
-		collector:   coll,
-		logger:      logger,
-		ldapConfig:  coll.GetLDAPConfig(),
+		addr:            addr,
+		metricsPath:     metricsPath,
+		collector:       coll,
+		logger:          logger,
+		ldapConfig:      coll.GetLDAPConfig(),
+		healthCheckFunc: collector.EnhancedCheckLDAPHealth,
 	}
 }
 
@@ -146,7 +149,7 @@ func (s *Server) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// Perform enhanced health check with detailed diagnostics by default
-	healthy, diagMsg := collector.EnhancedCheckLDAPHealth(s.ldapConfig, s.logger)
+	healthy, diagMsg := s.healthCheckFunc(s.ldapConfig, s.logger)
 
 	response := HealthResponse{
 		Status: "ok",
