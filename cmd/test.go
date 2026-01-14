@@ -9,7 +9,6 @@ import (
 
 	"gitee.com/openeuler/uos-openldap-exporter/internal/collector"
 	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
-	"gitee.com/openeuler/uos-openldap-exporter/internal/logger"
 )
 
 // testCmd represents the test command
@@ -24,17 +23,6 @@ basic search operations.`,
 		if err != nil {
 			return fmt.Errorf("failed to load configuration: %w", err)
 		}
-
-		log := logger.NewWithConfig(logger.Config{
-			Level:      cfg.Log.Level,
-			Format:     cfg.Log.Format,
-			Output:     cfg.Log.Output,
-			MaxSize:    cfg.Log.MaxSize,
-			MaxAge:     cfg.Log.MaxAge,
-			MaxBackups: cfg.Log.MaxBackups,
-			LocalTime:  cfg.Log.LocalTime,
-			Compress:   cfg.Log.Compress,
-		})
 
 		client, err := collector.NewTestLDAPClient(&cfg.LDAP)
 		if err != nil {
