@@ -11,13 +11,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// LDAPClient wraps an LDAP connection with configuration and logging
-type LDAPClient struct {
-	conn   *ldap.Conn
-	config *config.LDAPConfig
-	logger *logrus.Logger
-}
-
 // NewLDAPClient creates a new LDAP client and establishes a connection
 func NewLDAPClient(cfg *config.LDAPConfig, logger *logrus.Logger) (*LDAPClient, error) {
 	if cfg.Server == "" {
@@ -58,6 +51,13 @@ func NewLDAPClient(cfg *config.LDAPConfig, logger *logrus.Logger) (*LDAPClient, 
 		config: cfg,
 		logger: logger,
 	}, nil
+}
+
+// LDAPClient wraps an LDAP connection with configuration and logging
+type LDAPClient struct {
+	conn   *ldap.Conn
+	config *config.LDAPConfig
+	logger *logrus.Logger
 }
 
 // Close closes the LDAP connection
