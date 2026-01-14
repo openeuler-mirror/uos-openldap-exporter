@@ -43,13 +43,16 @@ func New(addr, metricsPath string, coll *collector.OpenLDAPCollector, logger *lo
 
 // Run starts the HTTP server
 func (s *Server) Run() error {
-	// Register collector
-	if err := prometheus.Register(s.collector); err != nil {
+	// Create a custom registry without default collectors
+	registry := prometheus.NewRegistry()
+	
+	// Register only our custom collector
+	if err := registry.Register(s.collector); err != nil {
 		return fmt.Errorf("failed to register collector: %w", err)
 	}
 
-	// Setup routes with middleware
-	handler := s.setupRoutes()
+	// Setup routes with middleware using custom registry
+	handler := s.setupRoutes(registry)
 
 	s.logger.Infof("Starting server on %s", s.addr)
 
@@ -67,13 +70,16 @@ func (s *Server) Run() error {
 
 // RunWithListener starts the HTTP server with a specific listener
 func (s *Server) RunWithListener(listener net.Listener) error {
-	// Register collector
-	if err := prometheus.Register(s.collector); err != nil {
+	// Create a custom registry without default collectors
+	registry := prometheus.NewRegistry()
+	
+	// Register only our custom collector
+	if err := registry.Register(s.collector); err != nil {
 		return fmt.Errorf("failed to register collector: %w", err)
 	}
 
-	// Setup routes with middleware
-	handler := s.setupRoutes()
+	// Setup routes with middleware using custom registry
+	handler := s.setupRoutes(registry)
 
 	s.logger.Infof("Starting server on listener %s", listener.Addr().String())
 
@@ -89,12 +95,12 @@ func (s *Server) RunWithListener(listener net.Listener) error {
 }
 
 // setupRoutes configures the HTTP routes and middleware
-func (s *Server) setupRoutes() http.Handler {
+func (s *Server) setupRoutes(registry *prometheus.Registry) http.Handler {
 	mux := http.NewServeMux()
 
-	// Wrap promhttp handler with logging middleware
+	// Wrap promhttp handler with logging middleware using custom registry
 	metricsHandler := s.loggingMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		promhttp.Handler().ServeHTTP(w, r)
+		promhttp.HandlerFor(registry, promhttp.HandlerOpts{}).ServeHTTP(w, r)
 	}))
 
 	mux.Handle(s.metricsPath, metricsHandler)
