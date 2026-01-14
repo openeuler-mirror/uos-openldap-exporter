@@ -139,19 +139,8 @@ func (rw *responseWriter) WriteHeader(code int) {
 func (s *Server) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// Check if verbose/extended diagnostics are requested
-	verbose := r.URL.Query().Get("verbose") != "" || r.URL.Query().Get("diag") != "" || r.URL.Query().Get("detailed") != ""
-
-	var healthy bool
-	var diagMsg string
-
-	if verbose {
-		// Perform enhanced health check with detailed diagnostics
-		healthy, diagMsg = collector.EnhancedCheckLDAPHealth(s.ldapConfig, s.logger)
-	} else {
-		// Perform standard health check using existing collector instance
-		healthy, diagMsg = s.collector.CheckHealth()
-	}
+	// Perform enhanced health check with detailed diagnostics by default
+	healthy, diagMsg := collector.EnhancedCheckLDAPHealth(s.ldapConfig, s.logger)
 
 	response := HealthResponse{
 		Status: "ok",
@@ -162,10 +151,8 @@ func (s *Server) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 		response.LDAP = diagMsg
 		w.WriteHeader(http.StatusServiceUnavailable)
 	} else {
-		// If diagnostics are requested, include them in the response
-		if verbose {
-			response.LDAP = diagMsg
-		}
+		// Always include diagnostics in the response
+		response.LDAP = diagMsg
 		w.WriteHeader(http.StatusOK)
 	}
 
