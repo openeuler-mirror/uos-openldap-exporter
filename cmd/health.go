@@ -18,6 +18,11 @@ var healthCmd = &cobra.Command{
 	Short: "Perform health check against LDAP server",
 	Long:  `Performs detailed health check against the LDAP server to diagnose connectivity issues.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cfgFile, _ := cmd.Flags().GetString("config.file")
+		if cfgFile == "" {
+			cfgFile = viper.GetString("config.file")
+		}
+		
 		cfg, err := config.Load(cfgFile)
 		if err != nil {
 			return fmt.Errorf("failed to load configuration: %w", err)
