@@ -77,7 +77,7 @@ func (c *TestLDAPClient) Search(conn *ldap.Conn, baseDN, filter string, attribut
 		baseDN,
 		ldap.ScopeWholeSubtree,
 		ldap.NeverDerefAliases,
-		0, // no size limit
+		0,                               // no size limit
 		int(c.config.Timeout.Seconds()), // time limit in seconds
 		false,
 		filter,

@@ -45,7 +45,7 @@ func New(addr, metricsPath string, coll *collector.OpenLDAPCollector, logger *lo
 func (s *Server) Run() error {
 	// Create a custom registry without default collectors
 	registry := prometheus.NewRegistry()
-	
+
 	// Register only our custom collector
 	if err := registry.Register(s.collector); err != nil {
 		return fmt.Errorf("failed to register collector: %w", err)
@@ -72,7 +72,7 @@ func (s *Server) Run() error {
 func (s *Server) RunWithListener(listener net.Listener) error {
 	// Create a custom registry without default collectors
 	registry := prometheus.NewRegistry()
-	
+
 	// Register only our custom collector
 	if err := registry.Register(s.collector); err != nil {
 		return fmt.Errorf("failed to register collector: %w", err)

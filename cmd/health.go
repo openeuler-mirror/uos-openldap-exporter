@@ -22,7 +22,7 @@ var healthCmd = &cobra.Command{
 		if cfgFile == "" {
 			cfgFile = viper.GetString("config.file")
 		}
-		
+
 		cfg, err := config.Load(cfgFile)
 		if err != nil {
 			return fmt.Errorf("failed to load configuration: %w", err)

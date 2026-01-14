@@ -28,14 +28,13 @@ basic search operations.`,
 			return fmt.Errorf("failed to load configuration: %w", err)
 		}
 
-
 		client, err := collector.NewTestLDAPClient(&cfg.LDAP)
 		if err != nil {
 			return fmt.Errorf("failed to create LDAP client: %w", err)
 		}
 
 		fmt.Println("Testing LDAP connection...")
-		
+
 		// Test connection
 		startTime := time.Now()
 		conn, err := client.Connect()

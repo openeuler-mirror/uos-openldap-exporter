@@ -67,7 +67,7 @@ func EnhancedCheckLDAPHealth(cfg *config.LDAPConfig, logger *logrus.Logger) (boo
 
 	// 记录开始时间
 	startTime := time.Now()
-	
+
 	// 测试连接
 	logger.Debug("Attempting to connect to LDAP server...")
 	conn, err := ldap.DialURL(cfg.Server, ldap.DialWithDialer(&net.Dialer{Timeout: cfg.Timeout}))
@@ -77,7 +77,7 @@ func EnhancedCheckLDAPHealth(cfg *config.LDAPConfig, logger *logrus.Logger) (boo
 	}
 	connectionTime := time.Since(startTime)
 	logger.Debugf("Connected to LDAP server in %v", connectionTime)
-	
+
 	defer func() {
 		if closeErr := conn.Close(); closeErr != nil {
 			logger.Debugf("Error closing LDAP connection: %v", closeErr)
@@ -133,7 +133,7 @@ func EnhancedCheckLDAPHealth(cfg *config.LDAPConfig, logger *logrus.Logger) (boo
 		[]string{"monitorServerVersion", "monitorRuntimeConfig"},
 		nil,
 	)
-	
+
 	sr, err := conn.Search(searchReq)
 	monitorTime := time.Since(monitorStartTime)
 	if err != nil {
@@ -143,7 +143,7 @@ func EnhancedCheckLDAPHealth(cfg *config.LDAPConfig, logger *logrus.Logger) (boo
 	}
 
 	totalTime := time.Since(startTime)
-	
+
 	details := fmt.Sprintf(
 		"Connection: %v, Bind: %v, WhoAmI: %v, Total: %v",
 		connectionTime,
@@ -151,11 +151,11 @@ func EnhancedCheckLDAPHealth(cfg *config.LDAPConfig, logger *logrus.Logger) (boo
 		whoAmITime,
 		totalTime,
 	)
-	
+
 	if cfg.StartTLS {
 		details += fmt.Sprintf(", TLS: %v", tlsTime)
 	}
-	
+
 	if sr != nil && len(sr.Entries) > 0 {
 		details += ", Monitor access: OK"
 	} else {

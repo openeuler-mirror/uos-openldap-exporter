@@ -20,7 +20,7 @@ var validateCmd = &cobra.Command{
 		if cfgFile == "" {
 			cfgFile = viper.GetString("config.file")
 		}
-		
+
 		cfg, err := config.Load(cfgFile)
 		if err != nil {
 			return fmt.Errorf("configuration validation failed: %w", err)
@@ -40,7 +40,7 @@ var validateCmd = &cobra.Command{
 		// If we reach here, the config loaded and validated successfully
 		fmt.Println("✓ Configuration is valid")
 		log.Info("Configuration validation completed successfully")
-		
+
 		// Print some key configuration values (without sensitive data)
 		fmt.Printf("LDAP Server: %s\n", cfg.LDAP.Server)
 		fmt.Printf("Listen Address: %s\n", cfg.Web.ListenAddress)
@@ -49,7 +49,7 @@ var validateCmd = &cobra.Command{
 		fmt.Printf("Log Format: %s\n", cfg.Log.Format)
 		fmt.Printf("Number of Custom Searches: %d\n", len(cfg.CustomSearches))
 		fmt.Printf("Enabled Plugins: %v\n", cfg.Plugins.Enabled)
-		
+
 		return nil
 	},
 }
@@ -59,7 +59,7 @@ func init() {
 
 	// Add flags
 	validateCmd.Flags().String("config.file", "", "Path to config file")
-	
+
 	// Bind flags to viper
 	viper.BindPFlag("config.file", validateCmd.Flags().Lookup("config.file"))
 }
