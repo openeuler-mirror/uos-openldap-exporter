@@ -3,7 +3,6 @@ package collector
 import (
 	"fmt"
 	"net"
-	"time"
 
 	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
 	"github.com/go-ldap/ldap/v3"
