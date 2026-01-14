@@ -130,7 +130,7 @@ func Load(configFile string) (*Config, error) {
 	// Set default values
 	viper.SetDefault("web.listen_address", ":9330")
 	viper.SetDefault("web.metrics_path", "/metrics")
-	viper.SetDefault("ldap.server", "")
+	viper.SetDefault("ldap.server", "ldap://localhost:389")
 	viper.SetDefault("ldap.bind_dn", "")
 	viper.SetDefault("ldap.bind_password", "")
 	viper.SetDefault("ldap.timeout", 10*time.Second)
