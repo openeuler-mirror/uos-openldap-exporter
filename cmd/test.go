@@ -19,10 +19,15 @@ var testCmd = &cobra.Command{
 This includes connecting to the server, binding with credentials, and performing
 basic search operations.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cfgFile, _ := cmd.Flags().GetString("config.file")
+		if cfgFile == "" {
+			cfgFile = viper.GetString("config.file")
+		}
 		cfg, err := config.Load(cfgFile)
 		if err != nil {
 			return fmt.Errorf("failed to load configuration: %w", err)
 		}
+
 
 		client, err := collector.NewTestLDAPClient(&cfg.LDAP)
 		if err != nil {
@@ -74,7 +79,7 @@ basic search operations.`,
 func init() {
 	rootCmd.AddCommand(testCmd)
 
-	// Allow overriding configuration from flags
+	// Use the shared cfgFile variable from root command
 	testCmd.Flags().String("config.file", "", "Path to config file")
 	testCmd.Flags().String("ldap.server", "", "LDAP server URL (e.g., ldap://localhost:389)")
 	testCmd.Flags().String("ldap.bind-dn", "", "Bind DN for authentication")
@@ -82,7 +87,7 @@ func init() {
 	testCmd.Flags().Bool("ldap.start-tls", false, "Enable StartTLS")
 	testCmd.Flags().Bool("ldap.insecure-skip-verify", false, "Skip LDAP server certificate verification (NOT recommended for production)")
 
-	// Bind flags to viper
+	// 在init阶段就绑定到Viper，确保与其他命令保持一致
 	viper.BindPFlag("config.file", testCmd.Flags().Lookup("config.file"))
 	viper.BindPFlag("ldap.server", testCmd.Flags().Lookup("ldap.server"))
 	viper.BindPFlag("ldap.bind_dn", testCmd.Flags().Lookup("ldap.bind-dn"))
