@@ -91,6 +91,42 @@ uos-openldap-exporter 是一个针对 OpenLDAP 的 Prometheus 监控指标导出
 
 ## 使用说明
 
+### 管理工具
+
+导出器包含多个管理工具作为子命令，可通过不同的子命令执行特定的管理任务：
+
+#### 健康检查
+
+对 LDAP 服务器执行详细的健康检查：
+
+```bash
+./uos-openldap-exporter health --config.file=config.yaml
+```
+
+#### 配置验证
+
+在不启动导出器的情况下验证配置文件的有效性：
+
+```bash
+./uos-openldap-exporter validate --config.file=config.yaml
+```
+
+#### 连接测试
+
+测试 LDAP 连接并执行基本操作：
+
+```bash
+./uos-openldap-exporter test --config.file=config.yaml
+```
+
+#### 版本信息
+
+打印版本信息：
+
+```bash
+./uos-openldap-exporter version
+```
+
 ### 配置文件方式
 
 创建配置文件 `config.yaml`：
