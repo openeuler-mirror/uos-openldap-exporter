@@ -296,6 +296,57 @@ func (c *OpenLDAPCollector) CollectWithClient(ch chan<- prometheus.Metric, clien
 	return c.collectWithClient(ch, client, server)
 }
 
+// collectMetricWithErrorHandling safely collects a metric and handles errors
+func (c *OpenLDAPCollector) collectMetricWithErrorHandling(
+	ch chan<- prometheus.Metric,
+	collectFunc func() (float64, error),
+	desc *prometheus.Desc,
+	labelValues ...string,
+) {
+	value, err := collectFunc()
+	if err != nil {
+		c.logger.Debugf("Failed to collect metric %s: %v", desc.String(), err)
+		return
+	}
+	ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, value, labelValues...)
+}
+
+// collectCounterMetricWithErrorHandling safely collects a counter metric and handles errors
+func (c *OpenLDAPCollector) collectCounterMetricWithErrorHandling(
+	ch chan<- prometheus.Metric,
+	collectFunc func() (float64, error),
+	desc *prometheus.Desc,
+	labelValues ...string,
+) {
+	value, err := collectFunc()
+	if err != nil {
+		c.logger.Debugf("Failed to collect counter metric %s: %v", desc.String(), err)
+		return
+	}
+	ch <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue, value, labelValues...)
+}
+
+// collectMonitorMetric collects a metric from LDAP monitor with error handling
+func (c *OpenLDAPCollector) collectMonitorMetric(
+	ch chan<- prometheus.Metric,
+	ldapClient LDAPClientInterface,
+	dn, attr string,
+	desc *prometheus.Desc,
+	labelValues ...string,
+) {
+	value, err := ldapClient.SearchMonitor(dn, attr)
+	if err != nil {
+		c.logger.Debugf("Failed to get monitor metric %s from %s: %v", attr, dn, err)
+		return
+	}
+	
+	if n, err := strconv.ParseFloat(value, 64); err == nil {
+		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, n, labelValues...)
+	} else {
+		c.logger.Debugf("Failed to parse monitor metric value %s: %v", value, err)
+	}
+}
+
 // collectWithClient contains the actual implementation for collecting metrics
 func (c *OpenLDAPCollector) collectWithClient(ch chan<- prometheus.Metric, client LDAPClientInterface, server string) error {
 	labels := prometheus.Labels{"server": server}
@@ -324,11 +375,10 @@ func (c *OpenLDAPCollector) collectWithClient(ch chan<- prometheus.Metric, clien
 	}
 
 	// Total entries
-	if count, err := ldapClient.SearchCount("", "(objectClass=*)"); err == nil {
-		ch <- prometheus.MustNewConstMetric(entriesTotalDesc, prometheus.GaugeValue, float64(count), labels["server"])
-	} else {
-		c.logger.Warnf("Failed to get total entries: %v", err)
-	}
+	c.collectMetricWithErrorHandling(ch, func() (float64, error) {
+		count, err := ldapClient.SearchCount("", "(objectClass=*)")
+		return float64(count), err
+	}, entriesTotalDesc, labels["server"])
 
 	// Monitor: connections details
 	connDetails := []struct {
@@ -342,176 +392,45 @@ func (c *OpenLDAPCollector) collectWithClient(ch chan<- prometheus.Metric, clien
 	}
 
 	for _, detail := range connDetails {
-		if val, err := ldapClient.SearchMonitor(detail.dn, detail.attr); err == nil {
-			if n, err := strconv.ParseFloat(val, 64); err == nil {
-				ch <- prometheus.MustNewConstMetric(detail.desc, prometheus.GaugeValue, n, labels["server"])
-			}
-		}
+		c.collectMonitorMetric(ch, ldapClient, detail.dn, detail.attr, detail.desc, labels["server"])
 	}
 
 	// Monitor: operations details
-	if val, err := ldapClient.SearchMonitor("cn=Operations,cn=Monitor", "monitorOpActive"); err == nil {
-		if n, err := strconv.ParseFloat(val, 64); err == nil {
-			ch <- prometheus.MustNewConstMetric(monitorActiveOpsDesc, prometheus.GaugeValue, n, labels["server"])
-		}
-	}
-
-	if val, err := ldapClient.SearchMonitor("cn=Operations,cn=Monitor", "monitorOpPending"); err == nil {
-		if n, err := strconv.ParseFloat(val, 64); err == nil {
-			ch <- prometheus.MustNewConstMetric(monitorPendingOpsDesc, prometheus.GaugeValue, n, labels["server"])
-		}
-	}
+	c.collectMonitorMetric(ch, ldapClient, "cn=Operations,cn=Monitor", "monitorOpActive", monitorActiveOpsDesc, labels["server"])
+	c.collectMonitorMetric(ch, ldapClient, "cn=Operations,cn=Monitor", "monitorOpPending", monitorPendingOpsDesc, labels["server"])
 
 	// Monitor: operations initiated/completed
 	opTypes := []string{"bind", "unbind", "search", "compare", "modify", "modrdn", "add", "delete", "abandon"}
 	for _, opType := range opTypes {
-		if val, err := ldapClient.SearchMonitor("cn=Operations,cn=Monitor", "monitorOpInitiated-"+opType); err == nil {
-			if n, err := strconv.ParseFloat(val, 64); err == nil {
-				ch <- prometheus.MustNewConstMetric(monitorOpsInitDesc, prometheus.CounterValue, n, labels["server"], opType)
+		// Initiated operations
+		c.collectCounterMetricWithErrorHandling(ch, func() (float64, error) {
+			val, err := ldapClient.SearchMonitor("cn=Operations,cn=Monitor", "monitorOpInitiated-"+opType)
+			if err != nil {
+				return 0, err
 			}
-		}
-		if val, err := ldapClient.SearchMonitor("cn=Operations,cn=Monitor", "monitorOpCompleted-"+opType); err == nil {
-			if n, err := strconv.ParseFloat(val, 64); err == nil {
-				ch <- prometheus.MustNewConstMetric(monitorOpsCompletedDesc, prometheus.CounterValue, n, labels["server"], opType)
+			return strconv.ParseFloat(val, 64)
+		}, monitorOpsInitDesc, labels["server"], opType)
+
+		// Completed operations
+		c.collectCounterMetricWithErrorHandling(ch, func() (float64, error) {
+			val, err := ldapClient.SearchMonitor("cn=Operations,cn=Monitor", "monitorOpCompleted-"+opType)
+			if err != nil {
+				return 0, err
 			}
-		}
-		if val, err := ldapClient.SearchMonitor("cn=Operations,cn=Monitor", "monitorOpWaiting-"+opType); err == nil {
-			if n, err := strconv.ParseFloat(val, 64); err == nil {
-				ch <- prometheus.MustNewConstMetric(monitorOpsWaitingDesc, prometheus.GaugeValue, n, labels["server"], opType)
-			}
-		}
+			return strconv.ParseFloat(val, 64)
+		}, monitorOpsCompletedDesc, labels["server"], opType)
+
+		// Waiting operations
+		c.collectMonitorMetric(ch, ldapClient, "cn=Operations,cn=Monitor", "monitorOpWaiting-"+opType, monitorOpsWaitingDesc, labels["server"], opType)
 	}
 
 	// Monitor: statistics
-	stats := []struct {
-		attr string
-		desc *prometheus.Desc
-	}{
-		{"monitorCounter", monitorStatDesc},
-	}
-
-	for _, stat := range stats {
-		if val, err := ldapClient.SearchMonitor("cn=Statistics,cn=Monitor", stat.attr); err == nil {
-			if n, err := strconv.ParseFloat(val, 64); err == nil {
-				ch <- prometheus.MustNewConstMetric(stat.desc, prometheus.GaugeValue, n, labels["server"], "statistics")
-			}
-		}
-	}
+	c.collectMonitorMetric(ch, ldapClient, "cn=Statistics,cn=Monitor", "monitorCounter", monitorStatDesc, labels["server"], "statistics")
 
 	// Enhanced monitoring: thread pool stats
 	threadStates := []string{"active", "idle", "max", "starting", "rdn", "wakeup"}
 	for _, state := range threadStates {
-		if val, err := ldapClient.SearchMonitor("cn=ThreadPool,cn=Monitor", "nBackload"+state); err == nil {
-			if n, err := strconv.ParseFloat(val, 64); err == nil {
-				ch <- prometheus.MustNewConstMetric(threadsDesc, prometheus.GaugeValue, n, labels["server"], state)
-			}
-		}
-	}
-
-	// Enhanced monitoring: waiters
-	if val, err := ldapClient.SearchMonitor("cn=Waiters,cn=Monitor", "monitorCounter"); err == nil {
-		if n, err := strconv.ParseFloat(val, 64); err == nil {
-			ch <- prometheus.MustNewConstMetric(waitersDesc, prometheus.GaugeValue, n, labels["server"])
-		}
-	}
-
-	// Time metrics
-	timeTypes := []string{"current", "uptime"}
-	for _, ttype := range timeTypes {
-		if val, err := ldapClient.SearchMonitor("cn=Time,cn=Monitor", "monitorTimestamp-"+ttype); err == nil {
-			// Convert LDAP timestamp to Unix timestamp
-			if unixTime, err := parseLDAPTimestampToSeconds(val); err == nil {
-				ch <- prometheus.MustNewConstMetric(timeDesc, prometheus.GaugeValue, unixTime, labels["server"], ttype)
-			}
-		}
-	}
-
-	// SSL/TLS related metrics
-	if tlsStats, err := ldapClient.GetTLSStats(); err == nil {
-		if tlsCountStr, exists := tlsStats["total_tls_connections"]; exists {
-			if tlsCount, err := strconv.ParseFloat(tlsCountStr, 64); err == nil {
-				ch <- prometheus.MustNewConstMetric(tlsConnectionsDesc, prometheus.CounterValue, tlsCount, labels["server"])
-			}
-		}
-		if tlsActiveStr, exists := tlsStats["active_tls_connections"]; exists {
-			if tlsActive, err := strconv.ParseFloat(tlsActiveStr, 64); err == nil {
-				ch <- prometheus.MustNewConstMetric(tlsActiveConnectionsDesc, prometheus.GaugeValue, tlsActive, labels["server"])
-			}
-		}
-	}
-
-	// STARTTLS metrics
-	if val, err := ldapClient.SearchMonitor("cn=Statistics,cn=Monitor", "monitorCounter-starttls_success"); err == nil {
-		if n, err := strconv.ParseFloat(val, 64); err == nil {
-			ch <- prometheus.MustNewConstMetric(startTlsSuccessDesc, prometheus.CounterValue, n, labels["server"])
-		}
-	}
-	if val, err := ldapClient.SearchMonitor("cn=Statistics,cn=Monitor", "monitorCounter-starttls_failure"); err == nil {
-		if n, err := strconv.ParseFloat(val, 64); err == nil {
-			ch <- prometheus.MustNewConstMetric(startTlsFailureDesc, prometheus.CounterValue, n, labels["server"])
-		}
-	}
-
-	// Replication status metrics
-	if replStats, err := ldapClient.GetReplicationStatus(); err == nil {
-		if replStatus, exists := replStats["provider_status"]; exists {
-			statusValue := 0.0
-			if replStatus == "available" {
-				statusValue = 1.0
-			}
-			ch <- prometheus.MustNewConstMetric(replicationProviderStatusDesc, prometheus.GaugeValue, statusValue, labels["server"])
-		}
-		if replStatus, exists := replStats["consumer_status"]; exists {
-			statusValue := 0.0
-			if replStatus == "available" {
-				statusValue = 1.0
-			}
-			ch <- prometheus.MustNewConstMetric(replicationConsumerStatusDesc, prometheus.GaugeValue, statusValue, labels["server"])
-		}
-		if delayStr, exists := replStats["provider_delay"]; exists {
-			if delay, err := strconv.ParseFloat(delayStr, 64); err == nil {
-				ch <- prometheus.MustNewConstMetric(replicationProviderDelayDesc, prometheus.GaugeValue, delay, labels["server"])
-			}
-		}
-		if lastUpdateStr, exists := replStats["provider_last_update"]; exists {
-			if lastUpdate, err := strconv.ParseFloat(lastUpdateStr, 64); err == nil {
-				ch <- prometheus.MustNewConstMetric(replicationProviderLastUpdateDesc, prometheus.GaugeValue, lastUpdate, labels["server"])
-			}
-		}
-	}
-
-	// Security metrics
-	if secStats, err := ldapClient.GetSecurityStats(); err == nil {
-		for key, value := range secStats {
-			if n, err := strconv.ParseFloat(value, 64); err == nil {
-				ch <- prometheus.MustNewConstMetric(securityStatDesc, prometheus.GaugeValue, n, labels["server"], key)
-			}
-		}
-	}
-
-	// Performance metrics
-	if perfStats, err := ldapClient.GetPerformanceStats(); err == nil {
-		for key, value := range perfStats {
-			if n, err := strconv.ParseFloat(value, 64); err == nil {
-				ch <- prometheus.MustNewConstMetric(performanceStatDesc, prometheus.GaugeValue, n, labels["server"], key)
-			}
-		}
-	}
-
-	// Custom searches - use the top-level config instead of LDAP config
-	for _, search := range c.config.CustomSearches {
-		if count, err := ldapClient.SearchCount(search.BaseDN, search.Filter); err == nil {
-			ch <- prometheus.MustNewConstMetric(customSearchDesc, prometheus.GaugeValue, float64(count), labels["server"], search.Name)
-		} else {
-			c.logger.Warnf("Failed to execute custom search '%s': %v", search.Name, err)
-		}
-	}
-
-	// Collect metrics from plugins
-	c.pluginManager.CollectAll(ch, ldapClient, server)
-
-	return nil
-}
+		c.collectMonitorMetric(ch, ldap
 
 // PluginAdapter 是一个适配器，用于将OpenLDAPCollector作为PluginCollector使用
 type PluginAdapter struct {
