@@ -555,8 +555,13 @@ func parseLDAPTimestampToSeconds(timestamp string) (float64, error) {
 	// LDAP Generalized Time format: YYYYMMDDHHMMSS[.sss]Z or YYYYMMDDHHMMSS[.sss]+HHMM
 	// For simplicity, we'll parse the basic format without milliseconds
 
-	// Remove trailing Z or timezone info for basic parsing
-	timestamp = timestamp[:len(timestamp)-1] // Remove last char (Z)
+	// Check if timestamp is long enough and ends with Z
+	if len(timestamp) < 15 || timestamp[len(timestamp)-1] != 'Z' {
+		return 0, nil // fallback for invalid format
+	}
+
+	// Remove trailing Z for basic parsing
+	timestamp = timestamp[:len(timestamp)-1]
 
 	// Parse format: YYYYMMDDHHMMSS
 	if len(timestamp) >= 14 {
