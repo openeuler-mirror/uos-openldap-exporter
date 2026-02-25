@@ -131,58 +131,44 @@ func init() {
 	logCompress = rootCmd.Flags().Bool("log.compress", false, "Compress rotated log files")
 }
 
+// bindFlag binds a single flag to viper and handles errors
+func bindFlag(viperKey, flagName string, bindErrs *[]error) {
+	if err := viper.BindPFlag(viperKey, rootCmd.Flags().Lookup(flagName)); err != nil {
+		*bindErrs = append(*bindErrs, fmt.Errorf("failed to bind %s flag: %w", viperKey, err))
+	}
+}
+
 // initConfigAndFlags initializes the configuration and binds the flags to viper
 func initConfigAndFlags() error {
 	// Bind viper flags
 	bindErrs := []error{}
 
-	if err := viper.BindPFlag("web.listen_address", rootCmd.Flags().Lookup("web.listen-address")); err != nil {
-		bindErrs = append(bindErrs, fmt.Errorf("failed to bind web.listen_address flag: %w", err))
+	// Define flag mappings for cleaner binding
+	flagMappings := []struct {
+		viperKey string
+		flagName string
+	}{
+		{"web.listen_address", "web.listen-address"},
+		{"web.metrics_path", "web.metrics-path"},
+		{"ldap.server", "ldap.server"},
+		{"ldap.bind_dn", "ldap.bind-dn"},
+		{"ldap.bind_password", "ldap.bind-password"},
+		{"ldap.timeout", "ldap.timeout"},
+		{"ldap.start_tls", "ldap.start-tls"},
+		{"ldap.insecure_skip_verify", "ldap.insecure-skip-verify"},
+		{"log.level", "log.level"},
+		{"log.format", "log.format"},
+		{"log.output", "log.output"},
+		{"log.max_size", "log.max-size"},
+		{"log.max_age", "log.max-age"},
+		{"log.max_backups", "log.max-backups"},
+		{"log.local_time", "log.local-time"},
+		{"log.compress", "log.compress"},
 	}
-	if err := viper.BindPFlag("web.metrics_path", rootCmd.Flags().Lookup("web.metrics-path")); err != nil {
-		bindErrs = append(bindErrs, fmt.Errorf("failed to bind web.metrics_path flag: %w", err))
-	}
-	if err := viper.BindPFlag("ldap.server", rootCmd.Flags().Lookup("ldap.server")); err != nil {
-		bindErrs = append(bindErrs, fmt.Errorf("failed to bind ldap.server flag: %w", err))
-	}
-	if err := viper.BindPFlag("ldap.bind_dn", rootCmd.Flags().Lookup("ldap.bind-dn")); err != nil {
-		bindErrs = append(bindErrs, fmt.Errorf("failed to bind ldap.bind_dn flag: %w", err))
-	}
-	if err := viper.BindPFlag("ldap.bind_password", rootCmd.Flags().Lookup("ldap.bind-password")); err != nil {
-		bindErrs = append(bindErrs, fmt.Errorf("failed to bind ldap.bind_password flag: %w", err))
-	}
-	if err := viper.BindPFlag("ldap.timeout", rootCmd.Flags().Lookup("ldap.timeout")); err != nil {
-		bindErrs = append(bindErrs, fmt.Errorf("failed to bind ldap.timeout flag: %w", err))
-	}
-	if err := viper.BindPFlag("ldap.start_tls", rootCmd.Flags().Lookup("ldap.start-tls")); err != nil {
-		bindErrs = append(bindErrs, fmt.Errorf("failed to bind ldap.start_tls flag: %w", err))
-	}
-	if err := viper.BindPFlag("ldap.insecure_skip_verify", rootCmd.Flags().Lookup("ldap.insecure-skip-verify")); err != nil {
-		bindErrs = append(bindErrs, fmt.Errorf("failed to bind ldap.insecure_skip_verify flag: %w", err))
-	}
-	if err := viper.BindPFlag("log.level", rootCmd.Flags().Lookup("log.level")); err != nil {
-		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.level flag: %w", err))
-	}
-	if err := viper.BindPFlag("log.format", rootCmd.Flags().Lookup("log.format")); err != nil {
-		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.format flag: %w", err))
-	}
-	if err := viper.BindPFlag("log.output", rootCmd.Flags().Lookup("log.output")); err != nil {
-		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.output flag: %w", err))
-	}
-	if err := viper.BindPFlag("log.max_size", rootCmd.Flags().Lookup("log.max-size")); err != nil {
-		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.max_size flag: %w", err))
-	}
-	if err := viper.BindPFlag("log.max_age", rootCmd.Flags().Lookup("log.max-age")); err != nil {
-		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.max_age flag: %w", err))
-	}
-	if err := viper.BindPFlag("log.max_backups", rootCmd.Flags().Lookup("log.max-backups")); err != nil {
-		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.max_backups flag: %w", err))
-	}
-	if err := viper.BindPFlag("log.local_time", rootCmd.Flags().Lookup("log.local-time")); err != nil {
-		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.local_time flag: %w", err))
-	}
-	if err := viper.BindPFlag("log.compress", rootCmd.Flags().Lookup("log.compress")); err != nil {
-		bindErrs = append(bindErrs, fmt.Errorf("failed to bind log.compress flag: %w", err))
+
+	// Bind all flags using the mapping
+	for _, mapping := range flagMappings {
+		bindFlag(mapping.viperKey, mapping.flagName, &bindErrs)
 	}
 
 	// Handle binding errors
