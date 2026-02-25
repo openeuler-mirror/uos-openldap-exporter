@@ -192,9 +192,9 @@ func (c *LDAPClient) GetReplicationStatus() (map[string]string, error) {
 	if err == nil && len(res.Entries) > 0 {
 		for _, entry := range res.Entries {
 			for _, attr := range entry.Attributes {
-				if strings.Contains(strings.ToLower(attr.Name), "status") ||
+				if len(attr.Values) > 0 && (strings.Contains(strings.ToLower(attr.Name), "status") ||
 					strings.Contains(strings.ToLower(attr.Name), "state") ||
-					strings.Contains(strings.ToLower(attr.Name), "delay") {
+					strings.Contains(strings.ToLower(attr.Name), "delay")) {
 					status[attr.Name] = attr.Values[0]
 				}
 			}
@@ -220,7 +220,7 @@ func (c *LDAPClient) GetReplicationStatus() (map[string]string, error) {
 	if err == nil && len(res.Entries) > 0 {
 		for _, entry := range res.Entries {
 			for _, attr := range entry.Attributes {
-				if attr.Name == "olcSyncRepl" {
+				if attr.Name == "olcSyncRepl" && len(attr.Values) > 0 {
 					for _, value := range attr.Values {
 						// Parse replication configuration to extract provider info
 						if strings.Contains(value, "provider=") {
