@@ -272,10 +272,10 @@ func (c *LDAPClient) GetSecurityStats() (map[string]string, error) {
 		res, err := c.conn.Search(req)
 		if err == nil && len(res.Entries) > 0 {
 			for _, attr := range res.Entries[0].Attributes {
-				if strings.Contains(strings.ToLower(attr.Name), "auth") ||
+				if len(attr.Values) > 0 && (strings.Contains(strings.ToLower(attr.Name), "auth") ||
 					strings.Contains(strings.ToLower(attr.Name), "bind") ||
 					strings.Contains(strings.ToLower(attr.Name), "sasl") ||
-					strings.Contains(strings.ToLower(attr.Name), "strong") {
+					strings.Contains(strings.ToLower(attr.Name), "strong")) {
 					stats[attr.Name] = attr.Values[0]
 				}
 			}
