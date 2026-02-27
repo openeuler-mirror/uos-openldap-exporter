@@ -550,6 +550,7 @@ func (c *OpenLDAPCollector) collectWithClient(ch chan<- prometheus.Metric, clien
 	c.pluginManager.CollectAll(ch, ldapClient, server)
 
 	return nil
+}
 
 // PluginAdapter 是一个适配器，用于将OpenLDAPCollector作为PluginCollector使用
 type PluginAdapter struct {
