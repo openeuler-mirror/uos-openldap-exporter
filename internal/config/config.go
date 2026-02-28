@@ -118,16 +118,8 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// Load loads configuration from file or environment variables
-func Load(configFile string) (*Config, error) {
-	// Print configuration sources precedence
-	// Precedence (highest to lowest):
-	// 1. Command line flags (bound via viper.BindPFlag in main)
-	// 2. Environment variables
-	// 3. Config file
-	// 4. Default values
-
-	// Set default values
+// setDefaults sets default configuration values
+func setDefaults() {
 	viper.SetDefault("web.listen_address", ":9330")
 	viper.SetDefault("web.metrics_path", "/metrics")
 	viper.SetDefault("ldap.server", "ldap://localhost:389")
@@ -145,36 +137,28 @@ func Load(configFile string) (*Config, error) {
 	viper.SetDefault("log.local_time", false)
 	viper.SetDefault("log.compress", false)
 	viper.SetDefault("plugins.enabled", []string{}) // Default to no plugins enabled
+}
 
-	// Set environment variable prefix
+// setupEnvironment configures environment variable handling
+func setupEnvironment() {
 	viper.SetEnvPrefix("OPENLDAP_EXPORTER")
-
-	// 设置环境变量键名替换规则，将点(.)替换为下划线(_)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
-	// Read in environment variables that match
 	viper.AutomaticEnv()
+}
 
-	// Set config file if provided
+// loadConfigFile loads configuration from file if provided
+func loadConfigFile(configFile string) error {
 	if configFile != "" {
 		viper.SetConfigFile(configFile)
 		if err := viper.ReadInConfig(); err != nil {
-			return nil, fmt.Errorf("failed to read config file '%s': %w", configFile, err)
+			return fmt.Errorf("failed to read config file '%s': %w", configFile, err)
 		}
 	}
+	return nil
+}
 
-	// Parse config into struct
-	var cfg Config
-	if err := viper.Unmarshal(&cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", err)
-	}
-
-	// 初始化CustomSearches为空切片而不是nil
-	if cfg.CustomSearches == nil {
-		cfg.CustomSearches = []CustomSearch{}
-	}
-
-	// Build TLS configuration
+// buildTLSConfig builds TLS configuration based on user settings
+func buildTLSConfig(cfg *Config) {
 	if cfg.LDAP.InsecureSkipVerify {
 		// #nosec G402 InsecureSkipVerify is intentionally configured by user to skip certificate verification
 		cfg.LDAP.TLSConfig = &tls.Config{
@@ -186,6 +170,40 @@ func Load(configFile string) (*Config, error) {
 			MinVersion: tls.VersionTLS12,
 		}
 	}
+}
+
+// Load loads configuration from file or environment variables
+func Load(configFile string) (*Config, error) {
+	// Configuration sources precedence (highest to lowest):
+	// 1. Command line flags (bound via viper.BindPFlag in main)
+	// 2. Environment variables
+	// 3. Config file
+	// 4. Default values
+
+	// Set default values
+	setDefaults()
+
+	// Setup environment variable handling
+	setupEnvironment()
+
+	// Load configuration file if provided
+	if err := loadConfigFile(configFile); err != nil {
+		return nil, err
+	}
+
+	// Parse config into struct
+	var cfg Config
+	if err := viper.Unmarshal(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse config: %w", err)
+	}
+
+	// Initialize CustomSearches to empty slice instead of nil
+	if cfg.CustomSearches == nil {
+		cfg.CustomSearches = []CustomSearch{}
+	}
+
+	// Build TLS configuration
+	buildTLSConfig(&cfg)
 
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
