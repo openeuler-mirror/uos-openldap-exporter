@@ -3,6 +3,7 @@ package collector
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"gitee.com/openeuler/uos-openldap-exporter/internal/config"
@@ -599,25 +600,11 @@ func parseLDAPTimestampToSeconds(timestamp string) (float64, error) {
 		return 0, nil // fallback for invalid format
 	}
 
-	// Remove trailing Z for basic parsing
-	timestamp = timestamp[:len(timestamp)-1]
-
-	// Parse format: YYYYMMDDHHMMSS
-	if len(timestamp) >= 14 {
-		year := timestamp[0:4]
-		month := timestamp[4:6]
-		day := timestamp[6:8]
-		hour := timestamp[8:10]
-		minute := timestamp[10:12]
-		second := timestamp[12:14]
-
-		dateStr := year + "-" + month + "-" + day + "T" + hour + ":" + minute + ":" + second + "Z"
-		t, err := time.Parse(time.RFC3339, dateStr)
-		if err != nil {
-			return 0, err
-		}
-		return float64(t.Unix()), nil
+	// Parse format: YYYYMMDDHHMMSS using time.Parse directly
+	// This is more efficient than string concatenation
+	t, err := time.Parse("20060102150405Z", timestamp)
+	if err != nil {
+		return 0, err
 	}
-
-	return 0, nil // fallback
+	return float64(t.Unix()), nil
 }
