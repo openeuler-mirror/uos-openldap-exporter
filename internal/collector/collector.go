@@ -185,6 +185,12 @@ type OpenLDAPCollector struct {
 	pluginManager *PluginManager
 	// ldapClientCreator 是一个函数，用于创建LDAP客户端，主要用于测试
 	ldapClientCreator func(*config.LDAPConfig, *logrus.Logger) (LDAPClientInterface, error)
+	// connectionPool 用于复用LDAP连接
+	connectionPool *LDAPClientPool
+	// usePool 启用连接池
+	usePool bool
+	// poolSize 连接池大小
+	poolSize int
 }
 
 // New creates a new OpenLDAPCollector
