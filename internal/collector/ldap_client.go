@@ -138,6 +138,39 @@ func (c *LDAPClient) CheckHealth() (bool, string) {
 	return true, ""
 }
 
+// searchAndExtractAttributes performs a search and extracts attributes matching a filter function
+func (c *LDAPClient) searchAndExtractAttributes(baseDN string, scope int, filter string, attributes []string, attrFilter func(string) bool) (map[string]string, error) {
+	result := make(map[string]string)
+
+	req := ldap.NewSearchRequest(
+		baseDN,
+		scope,
+		ldap.NeverDerefAliases,
+		0,
+		0,
+		false,
+		filter,
+		attributes,
+		nil,
+	)
+
+	res, err := c.conn.Search(req)
+	if err != nil || len(res.Entries) == 0 {
+		c.logger.Debugf("Search failed for baseDN=%s: %v", baseDN, err)
+		return result, err
+	}
+
+	for _, entry := range res.Entries {
+		for _, attr := range entry.Attributes {
+			if attrFilter(attr.Name) && len(attr.Values) > 0 {
+				result[attr.Name] = attr.Values[0]
+			}
+		}
+	}
+
+	return result, nil
+}
+
 // GetTLSStats 获取TLS连接统计信息
 func (c *LDAPClient) GetTLSStats() (map[string]string, error) {
 	stats := make(map[string]string)
