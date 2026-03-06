@@ -283,6 +283,15 @@ func (c *LDAPClient) GetReplicationStatus() (map[string]string, error) {
 func (c *LDAPClient) GetSecurityStats() (map[string]string, error) {
 	stats := make(map[string]string)
 
+	// Define attribute filter for security-related attributes
+	securityAttrFilter := func(attrName string) bool {
+		lowerName := strings.ToLower(attrName)
+		return strings.Contains(lowerName, "auth") ||
+			strings.Contains(lowerName, "bind") ||
+			strings.Contains(lowerName, "sasl") ||
+			strings.Contains(lowerName, "strong")
+	}
+
 	// Get authentication statistics from monitor
 	authStats := []string{
 		"cn=Authentication,cn=Monitor",
@@ -290,27 +299,16 @@ func (c *LDAPClient) GetSecurityStats() (map[string]string, error) {
 	}
 
 	for _, baseDN := range authStats {
-		req := ldap.NewSearchRequest(
+		result, err := c.searchAndExtractAttributes(
 			baseDN,
 			ldap.ScopeBaseObject,
-			ldap.NeverDerefAliases,
-			0,
-			0,
-			false,
 			"(objectClass=*)",
 			[]string{"*"},
-			nil,
+			securityAttrFilter,
 		)
-
-		res, err := c.conn.Search(req)
-		if err == nil && len(res.Entries) > 0 {
-			for _, attr := range res.Entries[0].Attributes {
-				if len(attr.Values) > 0 && (strings.Contains(strings.ToLower(attr.Name), "auth") ||
-					strings.Contains(strings.ToLower(attr.Name), "bind") ||
-					strings.Contains(strings.ToLower(attr.Name), "sasl") ||
-					strings.Contains(strings.ToLower(attr.Name), "strong")) {
-					stats[attr.Name] = attr.Values[0]
-				}
+		if err == nil {
+			for k, v := range result {
+				stats[k] = v
 			}
 		}
 	}
