@@ -208,29 +208,25 @@ func (c *LDAPClient) GetTLSStats() (map[string]string, error) {
 func (c *LDAPClient) GetReplicationStatus() (map[string]string, error) {
 	status := make(map[string]string)
 
+	// Define attribute filter for replication-related attributes
+	replicationAttrFilter := func(attrName string) bool {
+		lowerName := strings.ToLower(attrName)
+		return strings.Contains(lowerName, "status") ||
+			strings.Contains(lowerName, "state") ||
+			strings.Contains(lowerName, "delay")
+	}
+
 	// Check for syncrepl provider status
-	req := ldap.NewSearchRequest(
+	result, err := c.searchAndExtractAttributes(
 		"cn=Sync,cn=Providers,cn=Monitor",
 		ldap.ScopeWholeSubtree,
-		ldap.NeverDerefAliases,
-		0,
-		0,
-		false,
 		"(objectClass=*)",
 		[]string{"*"},
-		nil,
+		replicationAttrFilter,
 	)
-
-	res, err := c.conn.Search(req)
-	if err == nil && len(res.Entries) > 0 {
-		for _, entry := range res.Entries {
-			for _, attr := range entry.Attributes {
-				if len(attr.Values) > 0 && (strings.Contains(strings.ToLower(attr.Name), "status") ||
-					strings.Contains(strings.ToLower(attr.Name), "state") ||
-					strings.Contains(strings.ToLower(attr.Name), "delay")) {
-					status[attr.Name] = attr.Values[0]
-				}
-			}
+	if err == nil {
+		for k, v := range result {
+			status[k] = v
 		}
 	} else {
 		c.logger.Debugf("Could not get replication provider status from monitor: %v", err)
