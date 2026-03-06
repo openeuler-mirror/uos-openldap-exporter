@@ -329,22 +329,23 @@ func (c *LDAPClient) GetSecurityStats() (map[string]string, error) {
 func (c *LDAPClient) GetPerformanceStats() (map[string]string, error) {
 	stats := make(map[string]string)
 
-	// Get performance metrics from monitor
-	perfDns := []struct {
-		dn   string
-		attr string
-		key  string
+	// Define performance metrics to collect
+	perfMetrics := []struct {
+		dn       string
+		attr     string
+		metricKey string
 	}{
 		{"cn=Read,cn=Operations,cn=Monitor", "monitorOpCompleted", "read_ops_completed"},
 		{"cn=Compare,cn=Operations,cn=Monitor", "monitorOpCompleted", "compare_ops_completed"},
 		{"cn=Time,cn=Monitor", "monitorTimestamp", "current_time"},
 	}
 
-	for _, perf := range perfDns {
-		if val, err := c.SearchMonitor(perf.dn, perf.attr); err == nil {
-			stats[perf.key] = val
+	// Collect performance metrics
+	for _, metric := range perfMetrics {
+		if val, err := c.SearchMonitor(metric.dn, metric.attr); err == nil {
+			stats[metric.metricKey] = val
 		} else {
-			c.logger.Debugf("Could not get performance stats for %s: %v", perf.dn, err)
+			c.logger.Debugf("Could not get performance stats for %s: %v", metric.dn, err)
 		}
 	}
 
