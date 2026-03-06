@@ -10,31 +10,24 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// CheckLDAPHealth 执行LDAP服务器的健康检查
-func CheckLDAPHealth(cfg *config.LDAPConfig, logger *logrus.Logger) (bool, string) {
+// performLDAPConnection performs the basic LDAP connection, TLS, and bind operations
+func performLDAPConnection(cfg *config.LDAPConfig, logger *logrus.Logger) (*ldap.Conn, error) {
 	if cfg.Server == "" {
-		logger.Debug("LDAP server URL is empty")
-		return false, "LDAP server URL is empty"
+		return nil, fmt.Errorf("LDAP server URL is empty")
 	}
 
 	// Establish connection
 	conn, err := ldap.DialURL(cfg.Server, ldap.DialWithDialer(&net.Dialer{Timeout: cfg.Timeout}))
 	if err != nil {
-		logger.Debugf("Health check failed to connect to LDAP server: %v", err)
-		return false, fmt.Sprintf("Failed to connect to LDAP server: %v", err)
+		return nil, fmt.Errorf("failed to connect to LDAP server: %w", err)
 	}
-	defer func() {
-		if closeErr := conn.Close(); closeErr != nil {
-			logger.Debugf("Error closing LDAP connection: %v", closeErr)
-		}
-	}()
 
 	// Start TLS if configured
 	if cfg.StartTLS {
 		err = conn.StartTLS(cfg.TLSConfig)
 		if err != nil {
-			logger.Debugf("Health check failed to start TLS: %v", err)
-			return false, fmt.Sprintf("Failed to start TLS: %v", err)
+			conn.Close()
+			return nil, fmt.Errorf("failed to start TLS: %w", err)
 		}
 	}
 
@@ -42,10 +35,26 @@ func CheckLDAPHealth(cfg *config.LDAPConfig, logger *logrus.Logger) (bool, strin
 	if cfg.BindDN != "" {
 		err = conn.Bind(cfg.BindDN, cfg.BindPassword)
 		if err != nil {
-			logger.Debugf("Health check failed to bind to LDAP server: %v", err)
-			return false, fmt.Sprintf("Failed to bind to LDAP server: %v", err)
+			conn.Close()
+			return nil, fmt.Errorf("failed to bind to LDAP server: %w", err)
 		}
 	}
+
+	return conn, nil
+}
+
+// CheckLDAPHealth 执行LDAP服务器的健康检查
+func CheckLDAPHealth(cfg *config.LDAPConfig, logger *logrus.Logger) (bool, string) {
+	conn, err := performLDAPConnection(cfg, logger)
+	if err != nil {
+		logger.Debugf("Health check failed: %v", err)
+		return false, err.Error()
+	}
+	defer func() {
+		if closeErr := conn.Close(); closeErr != nil {
+			logger.Debugf("Error closing LDAP connection: %v", closeErr)
+		}
+	}()
 
 	// Perform a lightweight WhoAmI operation
 	_, err = conn.WhoAmI(nil)
