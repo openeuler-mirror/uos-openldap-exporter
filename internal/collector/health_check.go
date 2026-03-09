@@ -95,8 +95,8 @@ func EnhancedCheckLDAPHealth(cfg *config.LDAPConfig, logger *logrus.Logger) (boo
 
 	// 测试 StartTLS (如果配置)
 	var tlsTime time.Duration
-	tlsStartTime := time.Now()
 	if cfg.StartTLS {
+		tlsStartTime := time.Now()
 		logger.Debug("Attempting to start TLS...")
 		err = conn.StartTLS(cfg.TLSConfig)
 		if err != nil {
@@ -109,8 +109,8 @@ func EnhancedCheckLDAPHealth(cfg *config.LDAPConfig, logger *logrus.Logger) (boo
 
 	// 测试绑定认证
 	var bindTime time.Duration
-	bindStartTime := time.Now()
 	if cfg.BindDN != "" {
+		bindStartTime := time.Now()
 		logger.Debugf("Attempting to bind with DN: %s", cfg.BindDN)
 		err = conn.Bind(cfg.BindDN, cfg.BindPassword)
 		if err != nil {
