@@ -15,163 +15,163 @@ import (
 
 var (
 	upDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "up"),
+		prometheus.BuildFQName(PrometheusNamespace, "", "up"),
 		"Whether the OpenLDAP server is reachable.",
 		[]string{"server"}, nil)
 
 	entriesTotalDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "entries_total"),
+		prometheus.BuildFQName(PrometheusNamespace, "", "entries_total"),
 		"Total number of entries in the directory.",
 		[]string{"server"}, nil)
 
 	monitorCurrentConnDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "monitor", "current_connections"),
+		prometheus.BuildFQName(PrometheusNamespace, "monitor", "current_connections"),
 		"Current number of connected clients.",
 		[]string{"server"}, nil)
 
 	monitorTotalConnDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "monitor", "total_connections"),
+		prometheus.BuildFQName(PrometheusNamespace, "monitor", "total_connections"),
 		"Total number of connections since server startup.",
 		[]string{"server"}, nil)
 
 	monitorMaxConnDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "monitor", "max_connections"),
+		prometheus.BuildFQName(PrometheusNamespace, "monitor", "max_connections"),
 		"Maximum number of connections allowed by server configuration.",
 		[]string{"server"}, nil)
 
 	monitorActiveOpsDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "monitor", "active_operations"),
+		prometheus.BuildFQName(PrometheusNamespace, "monitor", "active_operations"),
 		"Number of currently active operations.",
 		[]string{"server"}, nil)
 
 	monitorPendingOpsDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "monitor", "pending_operations"),
+		prometheus.BuildFQName(PrometheusNamespace, "monitor", "pending_operations"),
 		"Number of pending operations.",
 		[]string{"server"}, nil)
 
 	monitorOpsInitDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "monitor", "operations_initiated_total"),
+		prometheus.BuildFQName(PrometheusNamespace, "monitor", "operations_initiated_total"),
 		"Number of initiated operations.",
 		[]string{"server", "operation"}, nil)
 
 	monitorOpsCompletedDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "monitor", "operations_completed_total"),
+		prometheus.BuildFQName(PrometheusNamespace, "monitor", "operations_completed_total"),
 		"Number of completed operations.",
 		[]string{"server", "operation"}, nil)
 
 	monitorOpsWaitingDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "monitor", "operations_waiting"),
+		prometheus.BuildFQName(PrometheusNamespace, "monitor", "operations_waiting"),
 		"Number of waiting operations.",
 		[]string{"server", "operation"}, nil)
 
 	monitorStatDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "monitor", "statistics"),
+		prometheus.BuildFQName(PrometheusNamespace, "monitor", "statistics"),
 		"Various statistics.",
 		[]string{"server", "statistic"}, nil)
 
 	customSearchDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "custom_search_result_count"),
+		prometheus.BuildFQName(PrometheusNamespace, "", "custom_search_result_count"),
 		"Result count of custom LDAP search.",
 		[]string{"server", "name"}, nil)
 
 	// New metrics for enhanced monitoring
 	threadsDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "monitor", "threads"),
+		prometheus.BuildFQName(PrometheusNamespace, "monitor", "threads"),
 		"Thread pool statistics.",
 		[]string{"server", "state"}, nil)
 
 	waitersDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "monitor", "waiters"),
+		prometheus.BuildFQName(PrometheusNamespace, "monitor", "waiters"),
 		"Number of threads waiting on a resource.",
 		[]string{"server"}, nil)
 
 	timeDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "monitor", "time_seconds"),
+		prometheus.BuildFQName(PrometheusNamespace, "monitor", "time_seconds"),
 		"System time metrics from LDAP server.",
 		[]string{"server", "type"}, nil)
 
 	// SSL/TLS related metrics
 	tlsConnectionsDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "tls", "connections_total"),
+		prometheus.BuildFQName(PrometheusNamespace, "tls", "connections_total"),
 		"Total number of TLS connections established.",
 		[]string{"server"}, nil)
 
 	tlsActiveConnectionsDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "tls", "active_connections"),
+		prometheus.BuildFQName(PrometheusNamespace, "tls", "active_connections"),
 		"Number of currently active TLS connections.",
 		[]string{"server"}, nil)
 
 	startTlsSuccessDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "tls", "starttls_success_total"),
+		prometheus.BuildFQName(PrometheusNamespace, "tls", "starttls_success_total"),
 		"Total number of successful StartTLS operations.",
 		[]string{"server"}, nil)
 
 	startTlsFailureDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "tls", "starttls_failure_total"),
+		prometheus.BuildFQName(PrometheusNamespace, "tls", "starttls_failure_total"),
 		"Total number of failed StartTLS operations.",
 		[]string{"server"}, nil)
 
 	// Replication status metrics
 	replicationProviderStatusDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "replication", "provider_status"),
+		prometheus.BuildFQName(PrometheusNamespace, "replication", "provider_status"),
 		"Status of replication provider (1=up, 0=down).",
 		[]string{"server", "provider"}, nil)
 
 	replicationConsumerStatusDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "replication", "consumer_status"),
+		prometheus.BuildFQName(PrometheusNamespace, "replication", "consumer_status"),
 		"Status of replication consumer (1=up, 0=down).",
 		[]string{"server", "consumer"}, nil)
 
 	replicationProviderDelayDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "replication", "provider_delay_seconds"),
+		prometheus.BuildFQName(PrometheusNamespace, "replication", "provider_delay_seconds"),
 		"Replication delay in seconds.",
 		[]string{"server", "provider"}, nil)
 
 	replicationProviderLastUpdateDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "replication", "provider_last_update_time_seconds"),
+		prometheus.BuildFQName(PrometheusNamespace, "replication", "provider_last_update_time_seconds"),
 		"Timestamp of last replication update.",
 		[]string{"server", "provider"}, nil)
 
 	// Performance metrics
 	ldapOperationResponseTimeDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "performance", "operation_response_time_seconds"),
+		prometheus.BuildFQName(PrometheusNamespace, "performance", "operation_response_time_seconds"),
 		"Response time of LDAP operations in seconds.",
 		[]string{"server", "operation"}, nil)
 
 	// Security related metrics
 	authenticationSuccessDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "security", "authentication_success_total"),
+		prometheus.BuildFQName(PrometheusNamespace, "security", "authentication_success_total"),
 		"Total number of successful authentications.",
 		[]string{"server"}, nil)
 
 	authenticationFailureDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "security", "authentication_failure_total"),
+		prometheus.BuildFQName(PrometheusNamespace, "security", "authentication_failure_total"),
 		"Total number of failed authentications.",
 		[]string{"server"}, nil)
 
 	securitySaslBindCountDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "security", "sasl_bind_total"),
+		prometheus.BuildFQName(PrometheusNamespace, "security", "sasl_bind_total"),
 		"Total number of SASL bind operations.",
 		[]string{"server"}, nil)
 
 	securitySimpleBindCountDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "security", "simple_bind_total"),
+		prometheus.BuildFQName(PrometheusNamespace, "security", "simple_bind_total"),
 		"Total number of simple bind operations.",
 		[]string{"server"}, nil)
 
 	securityStrongAuthCountDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "security", "strong_auth_total"),
+		prometheus.BuildFQName(PrometheusNamespace, "security", "strong_auth_total"),
 		"Total number of strong authentication operations.",
 		[]string{"server"}, nil)
 
 	// Security and Performance stat descriptors
 	securityStatDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "security", "statistics"),
+		prometheus.BuildFQName(PrometheusNamespace, "security", "statistics"),
 		"Security related statistics.",
 		[]string{"server", "statistic"}, nil)
 
 	performanceStatDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "performance", "statistics"),
+		prometheus.BuildFQName(PrometheusNamespace, "performance", "statistics"),
 		"Performance related statistics.",
 		[]string{"server", "statistic"}, nil)
 )
