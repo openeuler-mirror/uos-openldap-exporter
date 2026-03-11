@@ -391,9 +391,9 @@ func (c *OpenLDAPCollector) collectWithClient(ch chan<- prometheus.Metric, clien
 		attr string
 		desc *prometheus.Desc
 	}{
-		{"cn=Current,cn=Connections,cn=Monitor", "monitorCounter", monitorCurrentConnDesc},
-		{"cn=Total,cn=Connections,cn=Monitor", "monitorCounter", monitorTotalConnDesc},
-		{"cn=Max File Descriptors,cn=Connections,cn=Monitor", "monitorCounter", monitorMaxConnDesc},
+		{MonitorCurrentDN, MonitorCounterAttr, monitorCurrentConnDesc},
+		{MonitorTotalDN, MonitorCounterAttr, monitorTotalConnDesc},
+		{MonitorMaxFDDN, MonitorCounterAttr, monitorMaxConnDesc},
 	}
 
 	for _, detail := range connDetails {
