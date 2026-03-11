@@ -11,9 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	namespace = "openldap"
-)
+// Use PrometheusNamespace from constants.go
 
 var (
 	upDesc = prometheus.NewDesc(
