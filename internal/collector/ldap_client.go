@@ -247,7 +247,7 @@ func (c *LDAPClient) GetReplicationStatus() (map[string]string, error) {
 
 	syncReplRes, err := c.conn.Search(syncReplReq)
 	if err == nil && len(syncReplRes.Entries) > 0 {
-		for _, entry := range res.Entries {
+		for _, entry := range syncReplRes.Entries {
 			for _, attr := range entry.Attributes {
 				if attr.Name == "olcSyncRepl" && len(attr.Values) > 0 {
 					for _, value := range attr.Values {
