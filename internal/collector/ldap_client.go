@@ -233,7 +233,7 @@ func (c *LDAPClient) GetReplicationStatus() (map[string]string, error) {
 	}
 
 	// Try to get replication provider information from cn=SyncRepl
-	req = ldap.NewSearchRequest(
+	syncReplReq := ldap.NewSearchRequest(
 		"cn=SyncRepl,cn=config",
 		ldap.ScopeWholeSubtree,
 		ldap.NeverDerefAliases,
@@ -245,8 +245,8 @@ func (c *LDAPClient) GetReplicationStatus() (map[string]string, error) {
 		nil,
 	)
 
-	res, err = c.conn.Search(req)
-	if err == nil && len(res.Entries) > 0 {
+	syncReplRes, err := c.conn.Search(syncReplReq)
+	if err == nil && len(syncReplRes.Entries) > 0 {
 		for _, entry := range res.Entries {
 			for _, attr := range entry.Attributes {
 				if attr.Name == "olcSyncRepl" && len(attr.Values) > 0 {
